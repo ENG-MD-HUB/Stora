@@ -1,0 +1,16 @@
+{
+  "companies": [
+    {
+      "id": "company_001",
+      "name": "شركتي",
+      "joinCode": "STORIX01",
+      "active": true
+    },
+    {
+      "id": "company_002",
+      "name": "Jeddah Airports",
+      "joinCode": "JEDCO001",
+      "active": true
+    }
+  ]
+}
