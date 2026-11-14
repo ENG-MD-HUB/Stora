@@ -131,7 +131,7 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
 /** Where am I? — small path shown at the top of detail pages. */
 export function Crumbs({ items }: { items: { label: string; to?: string }[] }) {
   return (
-    <nav aria-label="breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 13 }}>
+    <nav aria-label="breadcrumb" className="crumbs">
       {items.map((c, i) => (
         <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {i > 0 && <span className="muted" aria-hidden="true">›</span>}

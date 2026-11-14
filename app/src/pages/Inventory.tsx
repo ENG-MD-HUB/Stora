@@ -57,7 +57,16 @@ function ItemsTable({ items, whName }: { items: Item[]; whName: (id: string) => 
   );
 }
 
+function useNarrow() {
+  const q = '(max-width: 899px)';
+  const [m, setM] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(q).matches);
+  useEffect(() => { const mq = matchMedia(q); const f = () => setM(mq.matches); mq.addEventListener('change', f); return () => mq.removeEventListener('change', f); }, []);
+  return m;
+}
+
 function ItemsView({ view, items, whName, groups }: { view: View; items: Item[]; whName: (id: string) => string; groups: { id: string; name: string }[] }) {
+  const narrow = useNarrow();
+  if (narrow && view === 'table') view = 'list'; // a wide table does not fit a phone
   if (view === 'table') return <ItemsTable items={items} whName={whName} />;
   if (view === 'list') return <div className="list">{items.map((i) => <ItemRow key={i.id} item={i} whName={whName(i.warehouseId)} />)}</div>;
   if (view === 'grouped') {
@@ -159,6 +168,7 @@ export function Inventory() {
   const setView = (v: View) => { setViewState(v); try { localStorage.setItem('stora.view', v); } catch { /* ignore */ } };
   const [sort, setSort] = useState<Sort>('new');
   const searchRef = useRef<HTMLInputElement>(null);
+  const narrow = useNarrow();
 
   useEffect(() => { if (params.get('focus') === '1') searchRef.current?.focus(); }, [params]);
   useEffect(() => { if (params.get('new') === '1') setShowNew(true); setWh(params.get('wh') ?? ''); }, [params]);
@@ -211,8 +221,8 @@ export function Inventory() {
           <option value="qtyDesc">{L('ترتيب: الأعلى كمية', 'Sort: Highest qty')}</option>
         </select>
         <div className="seg" role="radiogroup" aria-label={L('طريقة العرض', 'View')}>
-          {VIEWS.map(([k, icon, label]) => (
-            <button key={k} role="radio" aria-checked={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)} title={L(label[0], label[1])} aria-label={L(label[0], label[1])}><Icon name={icon} size={16} /></button>
+          {VIEWS.filter(([k]) => !(narrow && k === 'table')).map(([k, icon, label]) => (
+            <button key={k} role="radio" aria-checked={(narrow && view === 'table' ? 'list' : view) === k} className={(narrow && view === 'table' ? 'list' : view) === k ? 'on' : ''} onClick={() => setView(k)} title={L(label[0], label[1])} aria-label={L(label[0], label[1])}><Icon name={icon} size={16} /></button>
           ))}
         </div>
       </div>

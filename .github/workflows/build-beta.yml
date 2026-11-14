@@ -27,12 +27,12 @@ jobs:
         working-directory: app
       - name: Publish build at the site root
         run: |
-          rm -rf assets brand templates
+          rm -rf assets brand templates icons
           cp -r app/dist/. .
       - name: Commit build output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html sw.js manifest.webmanifest assets brand templates
+          git add index.html sw.js manifest.webmanifest assets brand templates icons
           git diff --cached --quiet || git commit -m "Build STORA from app/ [skip ci]"
           git push
