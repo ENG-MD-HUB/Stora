@@ -1,5 +1,5 @@
 import {
-  createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updateProfile,
+  createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updateProfile, type User,
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { APP } from '../config/app';
@@ -71,6 +71,7 @@ async function doRegister(input: { displayName: string; email: string; password:
     if ((await getDoc(doc(db, COL.users, cred.user.uid))).exists()) throw e;
   }
   await updateProfile(cred.user, { displayName: input.displayName.trim() }).catch(() => {});
+  await sendVerification(cred.user).catch(() => {});
   await setDoc(doc(db, COL.users, cred.user.uid), {
     uid: cred.user.uid, displayName: input.displayName.trim(), email: input.email.trim(),
     companyId: company.companyId, role: 'viewer', assignedWarehouseIds: [], isActive: true, pendingApproval: true,
@@ -100,4 +101,27 @@ export function authError(e: unknown, L: (a: string, b: string) => string): stri
   if (code.includes('network')) return L('لا يوجد اتصال بالإنترنت.', 'No internet connection.');
   if (code.includes('permission')) return L('ليست لديك صلاحية لهذا الإجراء.', 'You do not have permission.');
   return L('حدث خطأ. حاول مرة أخرى.', 'Something went wrong. Try again.');
+}
+
+/** Accounts created after this moment must confirm their email (older accounts keep working). */
+const VERIFY_SINCE = Date.parse('2026-11-14T20:00:00Z');
+
+export function needsEmailVerification(u: User | null): boolean {
+  if (!u || u.emailVerified || isSuperEmail(u.email)) return false;
+  const created = Date.parse(u.metadata.creationTime ?? '');
+  return !isNaN(created) && created >= VERIFY_SINCE;
+}
+
+export function sendVerification(u: User | null = auth.currentUser) {
+  if (!u) return Promise.resolve();
+  return sendEmailVerification(u, { url: `${location.origin}${location.pathname}` });
+}
+
+/** Re-read the user from Firebase; true once the email link was opened. */
+export async function checkVerified(): Promise<boolean> {
+  const u = auth.currentUser;
+  if (!u) return false;
+  await u.reload();
+  await u.getIdToken(true);
+  return u.emailVerified;
 }

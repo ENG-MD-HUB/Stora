@@ -5,7 +5,7 @@ import { can, type Permission } from './lib/permissions';
 import { AuthProvider, CartProvider, DataProvider, useAuth } from './state/app';
 import { Layout } from './ui/Layout';
 import { Loading, ToastProvider } from './ui/kit';
-import { Login, Register } from './pages/Auth';
+import { Login, Register, VerifyEmail } from './pages/Auth';
 import { Home } from './pages/Home';
 import { Inventory } from './pages/Inventory';
 import { ItemPage } from './pages/ItemPage';
@@ -31,8 +31,9 @@ function Guard({ children, perm, superOnly }: { children: ReactNode; perm?: Perm
 }
 
 function Gate() {
-  const { session, ready } = useAuth();
+  const { session, ready, unverified } = useAuth();
   if (!ready) return <Loading />;
+  if (session && unverified) return <VerifyEmail />;
   if (!session) {
     return (
       <Routes>
