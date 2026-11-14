@@ -1,5 +1,16 @@
 # STORA — Changelog
 
+## v2.1 · November 2026
+
+### Improvements
+- **Phone layout:** the side menu becomes a slide-out drawer (☰ button in the header), content uses the full width,
+  dashboard cards stack 2-up, popups open from the bottom, larger tap targets.
+- **New users waiting for permissions:** marked "New — needs permissions" and listed first on the Users page,
+  with a banner showing how many are waiting. Saving their role clears the mark.
+- **New user's dashboard:** shows "Your account is ready — your manager will assign your role shortly" instead of an empty screen.
+- **Super Admin** opens straight to the Companies page; the header shows "Super Admin".
+- Dashboard date and greeting follow the selected language.
+
 ## v2.0 · November 2026
 
 ### Fixes

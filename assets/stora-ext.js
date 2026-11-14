@@ -143,7 +143,11 @@
     "Active (new users can join)": "نشطة (يمكن للمستخدمين الجدد الانضمام)", "e.g. Jeddah Airports": "مثال: مطارات جدة",
     "8 letters/numbers. Changing it disables the old code; existing users are not affected.": "8 حروف/أرقام. تغييره يعطّل الرمز القديم ولا يؤثر على المستخدمين الحاليين.",
     "Jeddah Airports": "مطارات جدة", "Sort:": "ترتيب:", "Qty": "الكمية", "All good": "كل شيء جيد", "Search...": "بحث...", "Search…": "بحث…",
-    "Newest": "الأحدث", "Oldest": "الأقدم", "Name A-Z": "الاسم أ-ي", "Released": "مصروف", "Cancelled": "ملغى", "Returned": "مُرجع", "Add Stock": "إضافة كمية", "Print": "طباعة", "Loading…": "جارٍ التحميل…", "members": "عضو", "entries": "سجل", "Auth": "الدخول",
+    "Newest": "الأحدث", "Oldest": "الأقدم", "Name A-Z": "الاسم أ-ي", "Released": "مصروف", "Cancelled": "ملغى", "Returned": "مُرجع", "Add Stock": "إضافة كمية", "New — needs permissions": "جديد — يحتاج صلاحيات",
+    "Tap the edit icon next to each one to choose a role and storages.": "اضغط أيقونة التعديل بجانب كل مستخدم لتحديد دوره وأماكن التخزين.",
+    "Your account is ready": "حسابك جاهز", "Menu": "القائمة",
+    "Your manager will assign your role and storages shortly. You will see your data here once that is done.": "سيحدد مديرك دورك وأماكن التخزين قريباً، وستظهر بياناتك هنا بعد ذلك.",
+    "(you)": "(أنت)", "Print": "طباعة", "Loading…": "جارٍ التحميل…", "members": "عضو", "entries": "سجل", "Auth": "الدخول",
     "Left to Right": "من اليسار لليمين", "Right to Left": "من اليمين لليسار", "All good ✓": "كل شيء جيد ✓", "John Smith": "مثال: محمد أحمد", "your@email.com": "your@email.com"
   };
   var PATTERNS = [
@@ -153,6 +157,7 @@
     [/^(\d+)\s+(users?|members?)$/i, function (m) { return m[1] + " مستخدم"; }],
     [/^active\s+(\d+)$/i, function (m) { return m[1] + " نشط"; }],
     [/^(\d+)\s+active$/i, function (m) { return m[1] + " نشط"; }],
+    [/^(\d+) new user\(s\) waiting for permissions$/, function (m) { return m[1] === "1" ? "مستخدم جديد بانتظار الصلاحيات" : m[1] + " مستخدمين جدد بانتظار الصلاحيات"; }],
     [/^Available:\s*(.*)$/, function (m) { return "المتوفر: " + m[1]; }],
     [/^Reason:\s*(.*)$/, function (m) { return "السبب: " + m[1]; }],
     [/^Destination:\s*(.*)$/, function (m) { return "الوجهة: " + m[1]; }],
@@ -255,6 +260,10 @@
     el.textContent = isAr() ? "غير متصل — تعمل الآن من البيانات المحفوظة على جهازك" : "Offline — working from data saved on this device";
     el.classList.toggle("show", !navigator.onLine);
   }
+  function closeNav() { document.documentElement.classList.remove("stora-nav-open"); }
+  window.addEventListener("hashchange", closeNav);
+  window.addEventListener("popstate", closeNav);
+  document.addEventListener("click", function (e) { var a = e.target && e.target.closest && e.target.closest(".stora-aside a, .stora-aside button"); if (a) setTimeout(closeNav, 60); }, true);
   window.addEventListener("online", offlinePill);
   window.addEventListener("offline", offlinePill);
 

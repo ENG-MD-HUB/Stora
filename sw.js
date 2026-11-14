@@ -1,6 +1,6 @@
 /* STORA service worker — keeps the app shell available offline.
    Firestore data itself is cached by Firestore's own offline persistence. */
-const VERSION = "stora-v2.0";
+const VERSION = "stora-v2.1";
 const SHELL = ["/Stora/", "/Stora/index.html", "/Stora/manifest.webmanifest", "/Stora/favicon.png", "/Stora/icon-192.png", "/Stora/icon-512.png"];
 
 self.addEventListener("install", (e) => {

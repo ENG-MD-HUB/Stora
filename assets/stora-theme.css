@@ -41,3 +41,40 @@
 /* ---------- Offline indicator ---------- */
 #stora-offline{position:fixed;bottom:16px;left:50%;transform:translate(-50%,calc(100% + 40px));z-index:9999;padding:9px 16px;border-radius:99px;font-size:12.5px;font-weight:600;color:#1f1300;background:linear-gradient(135deg,#fbbf24,#f59e0b);box-shadow:0 8px 24px rgba(245,158,11,.35);transition:transform .3s ease;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
 #stora-offline.show{transform:translate(-50%,0)}
+
+/* ---------- v2.1: callouts ---------- */
+.stora-callout{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,rgba(99,102,241,.14),rgba(56,189,248,.08));border:1px solid rgba(129,140,248,.28)}
+.stora-callout-warn{background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(245,158,11,.06));border-color:rgba(251,191,36,.35)}
+.stora-callout-ico{font-size:22px;line-height:1}
+.stora-callout-title{margin:0;font-size:14px;font-weight:700;color:var(--tx-primary)}
+.stora-callout-sub{margin:3px 0 0;font-size:12.5px;color:var(--tx-secondary)}
+.stora-new{margin-inline-start:6px;animation:storaPulse 2.4s ease-in-out infinite}
+@keyframes storaPulse{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,0)}50%{box-shadow:0 0 0 4px rgba(251,191,36,.18)}}
+.light .stora-callout{background:linear-gradient(135deg,#eef0ff,#ecf8ff)}
+.light .stora-callout-warn{background:linear-gradient(135deg,#fff8e6,#fffdf5)}
+
+/* ---------- v2.1: mobile layout ---------- */
+.stora-burger{display:none}
+.stora-nav-backdrop{display:none}
+[dir=rtl] .stora-aside{border-right:none!important;border-left:1px solid var(--border)!important}
+@media (max-width:820px){
+  .stora-burger{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:11px;border:1px solid var(--border);background:var(--bg-surface);color:var(--tx-primary);cursor:pointer;flex-shrink:0}
+  .stora-header{padding:0 12px!important;gap:10px!important}
+  .stora-header>span{max-width:45vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stora-aside{position:fixed!important;top:52px;bottom:0;inset-inline-start:0;z-index:40;width:270px!important;height:auto!important;transform:translateX(-105%);transition:transform .26s cubic-bezier(.2,.8,.2,1);background:var(--bg-base)!important;box-shadow:0 24px 64px rgba(0,0,0,.45)}
+  [dir=rtl] .stora-aside{transform:translateX(105%)}
+  .stora-nav-open .stora-aside{transform:none!important}
+  .stora-nav-backdrop{display:block;position:fixed;top:52px;left:0;right:0;bottom:0;z-index:35;background:rgba(5,5,15,.5);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .2s}
+  .stora-nav-open .stora-nav-backdrop{opacity:1;pointer-events:auto}
+  .stora-aside nav a{padding:12px 14px!important;font-size:14.5px!important}
+  #main-content>div{padding:16px 14px calc(28px + env(safe-area-inset-bottom))!important}
+  .stora-stats{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+  .stora-panels{grid-template-columns:1fr!important}
+  #main-content [style*="1fr 1fr 1fr"]{grid-template-columns:1fr 1fr!important}
+  #main-content h1{font-size:19px!important}
+  #main-content>div>div>div:first-child[style*="space-between"]{flex-wrap:wrap;gap:10px}
+  .s-btn{min-height:38px}
+  .s-input{font-size:16px}
+  .s-overlay{padding:10px;align-items:flex-end}
+  .s-overlay>div{max-height:92vh;overflow-y:auto;border-radius:20px 20px 14px 14px!important}
+}
