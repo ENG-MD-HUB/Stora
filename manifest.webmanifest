@@ -1,7 +1,7 @@
 {
   "name": "STORA",
   "short_name": "STORA",
-  "description": "Storage Management System",
+  "description": "STORA — Warehouse Management System",
   "start_url": "/Stora/",
   "scope": "/Stora/",
   "display": "standalone",
@@ -26,6 +26,13 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/Stora/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
-  ]
+  ],
+  "lang": "ar",
+  "dir": "auto"
 }
