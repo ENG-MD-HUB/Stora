@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fmtDate, fmtDateTime } from '../lib/format';
 import { usePrefs } from '../lib/prefs';
 import { can } from '../lib/permissions';
-import { cancelRelease, createRelease, fetchRelease, fetchReleases, fetchSignatories, type ReleaseForm } from '../services/releases';
+import { cancelRelease, createRelease, fetchRelease, fetchReleases, fetchSignatories, returnFromRelease, type ReleaseForm } from '../services/releases';
+import type { ReleaseLine } from '../services/types';
 import { useAuth, useCart, useData, useSession } from '../state/app';
 import { PrintFooter, PrintHeader } from '../ui/Brand';
 import { Icon } from '../ui/Icon';
-import { Confirm, Empty, Field, Loading, Stepper, useLoad, useToast } from '../ui/kit';
+import { Confirm, Empty, Field, Loading, Sheet, Stepper, useLoad, useToast } from '../ui/kit';
 
 function Steps({ step }: { step: 1 | 2 | 3 }) {
   const { L } = usePrefs();
@@ -62,8 +63,8 @@ export function ReleaseNew() {
   if (!lines.length) {
     return (
       <>
-        <h1 className="h1">{L('سند صرف جديد', 'New release')}</h1>
-        <Empty icon="bag" title={L('السند فارغ', 'The release is empty')} text={L('أضف أصنافاً من المخزون بزر + أو امسح الباركود.', 'Add items from inventory with + or scan a barcode.')}
+        <h1 className="h1">{L('السلة', 'Cart')}</h1>
+        <Empty icon="bag" title={L('السلة فارغة', 'Your cart is empty')} text={L('اضغط + بجانب أي صنف في المخزون، حدّد الكمية، وسيُضاف هنا.', 'Tap + next to any item in inventory, choose the quantity, and it lands here.')}
           action={<div style={{ display: 'flex', gap: 8 }}><Link className="btn primary" to="/inventory">{L('اختر من المخزون', 'Pick from inventory')}</Link><Link className="btn" to="/scan">{L('مسح', 'Scan')}</Link></div>} />
       </>
     );
@@ -73,7 +74,7 @@ export function ReleaseNew() {
     <>
       <div className="head">
         <button className="icon-btn" onClick={() => nav(-1)} aria-label={L('رجوع', 'Back')}><Icon name={lang === 'ar' ? 'back' : 'fwd'} /></button>
-        <div className="grow"><h1 className="h1" style={{ fontSize: 21 }}>{L('سند صرف جديد', 'New release')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{L('من', 'From')}: {whName(cart.warehouseId ?? '')}</p></div>
+        <div className="grow"><h1 className="h1" style={{ fontSize: 21 }}>{L('السلة', 'Cart')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{L(`${lines.length} أصناف من ${whName(cart.warehouseId ?? '')} · لا تُخصم من المخزون إلا عند إصدار السند`, `${lines.length} items from ${whName(cart.warehouseId ?? '')} · stock changes only when you issue the release`)}</p></div>
       </div>
       <Steps step={2} />
 
@@ -86,7 +87,7 @@ export function ReleaseNew() {
               <button className="icon-btn" style={{ width: 40, height: 40 }} onClick={() => cart.remove(entry.itemId)} aria-label={L('إزالة', 'Remove')}><Icon name="x" size={16} /></button>
             </div>
           ))}
-          <Link to="/inventory" className="row" style={{ color: 'var(--accent-text)', fontWeight: 600, fontSize: 14 }}><Icon name="plus" size={18} />{L('إضافة صنف آخر', 'Add another item')}</Link>
+          <Link to="/inventory" className="row" style={{ color: 'var(--accent-text)', fontWeight: 600, fontSize: 14 }}><Icon name="plus" size={18} />{L('إضافة أصناف أخرى', 'Add more items')}</Link>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -146,6 +147,7 @@ export function ReleaseView() {
   const r = useLoad(() => fetchRelease(id), [id]);
   const sig = useLoad(() => fetchSignatories(s.companyId), [s.companyId]);
   const [cancel, setCancel] = useState(false);
+  const [ret, setRet] = useState<ReleaseLine | null>(null);
 
   if (r.loading && !r.data) return <Loading />;
   const rel = r.data;
@@ -175,12 +177,18 @@ export function ReleaseView() {
           ))}
         </div>
         <div className="list">
-          {rel.items.map((l) => (
-            <Link key={l.itemId} to={`/item/${l.itemId}`} className="row">
-              <span className="grow"><p className="title" style={{ fontSize: 14 }}>{l.itemName}</p><p className="sub mono" style={{ fontSize: 12 }}>{[l.sapCode, l.serialNumber].filter(Boolean).join(' · ')}</p></span>
-              <b className="mono">× {l.qtyReleased}</b>
-            </Link>
-          ))}
+          {rel.items.map((l) => {
+            const back = l.qtyReturned ?? 0;
+            const canReturn = rel.status === 'active' && back < l.qtyReleased && can(s.role, 'item:withdraw');
+            return (
+              <div key={l.itemId} className="row">
+                <Link to={`/item/${l.itemId}`} className="grow" style={{ color: 'inherit' }}><p className="title" style={{ fontSize: 14 }}>{l.itemName}</p><p className="sub mono" style={{ fontSize: 12 }}>{[l.sapCode, l.serialNumber].filter(Boolean).join(' · ')}</p></Link>
+                {back > 0 && <span className="chip ok" style={{ fontSize: 12 }}>{L(`أُرجع ${back}`, `${back} returned`)}</span>}
+                <b className="mono">× {l.qtyReleased}</b>
+                {canReturn && <button className="btn sm" onClick={() => setRet(l)}><Icon name="restore" size={15} />{L('إرجاع', 'Return')}</button>}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -213,8 +221,34 @@ export function ReleaseView() {
       </div>
 
       {cancel && <Confirm danger title={L('إلغاء السند؟', 'Cancel release?')} text={L('ستعود الكميات إلى المخزون ويُسجّل الإلغاء.', 'Quantities go back to stock and the cancellation is logged.')} confirmLabel={L('إلغاء السند', 'Cancel release')} onClose={() => setCancel(false)} onConfirm={async () => { await cancelRelease(rel.id); toast(L('تم إلغاء السند', 'Release cancelled')); r.reload(); reload(); }} />}
+      {ret && <ReturnSheet releaseId={rel.id} releaseNumber={rel.releaseNumber} line={ret} onClose={() => setRet(null)} onDone={() => { setRet(null); r.reload(); reload(); }} />}
       <AutoPrint ready={!!sig.data} />
     </>
+  );
+}
+
+function ReturnSheet({ releaseId, releaseNumber, line, onClose, onDone }: { releaseId: string; releaseNumber: string; line: ReleaseLine; onClose: () => void; onDone: () => void }) {
+  const { L } = usePrefs();
+  const toast = useToast();
+  const open = line.qtyReleased - (line.qtyReturned ?? 0);
+  const [qty, setQty] = useState(open);
+  const [by, setBy] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <Sheet title={L(`إرجاع من ${releaseNumber}`, `Return from ${releaseNumber}`)} onClose={onClose}>
+      <div className="qty-pick">
+        <p className="muted"><b style={{ color: 'var(--text)' }}>{line.itemName}</b> · {L(`مصروف ${line.qtyReleased}، يمكن إرجاع ${open}`, `released ${line.qtyReleased}, ${open} can come back`)}</p>
+        <Stepper value={qty} max={open} onChange={setQty} />
+        <Field label={L('أرجعه', 'Returned by')}><input className="input" value={by} onChange={(e) => setBy(e.target.value)} /></Field>
+        <Field label={L('السبب / ملاحظة', 'Reason / note')} hint={L('اختياري', 'optional')}><input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder={L('مثال: لم يُستخدم', 'e.g. not used')} /></Field>
+        <button className="btn primary block" disabled={busy} onClick={async () => {
+          setBusy(true);
+          try { const n = await returnFromRelease(releaseId, line.itemId, qty, by.trim(), note.trim()); toast(L(`أُرجع ${n} للمخزون`, `${n} returned to stock`)); onDone(); }
+          catch { toast(L('تعذّر الإرجاع', 'Could not return'), 'error'); setBusy(false); }
+        }}>{busy ? <span className="spinner" /> : L(`إرجاع ${qty} للمخزون`, `Return ${qty} to stock`)}</button>
+      </div>
+    </Sheet>
   );
 }
 

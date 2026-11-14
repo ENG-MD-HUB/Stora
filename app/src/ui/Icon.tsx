@@ -39,6 +39,7 @@ const P: Record<string, string> = {
   grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   rows: 'M4 6h16M4 12h16M4 18h16',
   table: 'M3 5h18v14H3zM3 10h18M3 15h18M9 5v14',
+  cart: 'M3 4h2.2l2.3 11a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.6-1.2L21 8H6.1M9.5 20.5h.01M17 20.5h.01',
   refresh: 'M4 4v5h5M20 20v-5h-5M5.6 15A8 8 0 0 0 19 17M18.4 9A8 8 0 0 0 5 7',
 };
 

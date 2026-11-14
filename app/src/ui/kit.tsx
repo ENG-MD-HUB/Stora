@@ -104,7 +104,7 @@ export function Stepper({ value, min = 1, max, onChange }: { value: number; min?
   return (
     <div className="stepper">
       <button type="button" aria-label="-" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>−</button>
-      <b>{value}</b>
+      <input className="mono" inputMode="numeric" aria-label="qty" value={value} onFocus={(e) => e.target.select()} onChange={(e) => { const n = parseInt(e.target.value.replace(/\D/g, ''), 10); onChange(Math.min(max, Math.max(min, Number.isFinite(n) ? n : min))); }} />
       <button type="button" aria-label="+" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>+</button>
     </div>
   );

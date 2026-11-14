@@ -74,7 +74,6 @@ export function Layout() {
     const on = to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(to);
     return <NavLink to={to} className={`tab ${on ? 'on' : ''}`}><Icon name={icon} size={22} />{label}</NavLink>;
   };
-  const showCartBar = cart.entries.length > 0 && !loc.pathname.startsWith('/release');
 
   return (
     <div className="shell">
@@ -101,15 +100,11 @@ export function Layout() {
         <main className="page"><Outlet /></main>
       </div>
 
-      {showCartBar && (
-        <NavLink to="/release" className="cartbar no-print">
-          <span className="n">{cart.entries.length}</span>
-          <span className="grow">{L('أصناف في سند الصرف', 'items in release')}</span>
-          <span>{L('متابعة', 'Continue')} <Icon name={document.dir === 'rtl' ? 'fwd' : 'back'} size={16} /></span>
+      {!sup && can(s.role, 'release:create') && !loc.pathname.startsWith('/release') && !loc.pathname.startsWith('/scan') && (
+        <NavLink to="/release" className="fab-wrap no-print" aria-label={L(`السلة، ${cart.entries.length} أصناف`, `Cart, ${cart.entries.length} items`)}>
+          <span className="fab-btn"><Icon name="cart" size={25} stroke={2.1} />{cart.entries.length > 0 && <span className="fab-badge mono">{cart.entries.length}</span>}</span>
         </NavLink>
       )}
-
-      {!sup && !loc.pathname.startsWith('/release') && !loc.pathname.startsWith('/scan') && <Fab raised={showCartBar} />}
       {!sup && (
         <nav className="tabbar no-print" aria-label={L('التنقل', 'Navigation')}>
           {tab('/', 'home', L('الرئيسية', 'Home'))}
@@ -128,43 +123,6 @@ export function Layout() {
           {tab('/settings', 'settings', L('الإعدادات', 'Settings'))}
         </nav>
       )}
-    </div>
-  );
-}
-
-/** Floating "+" button: the one place to start new work (release, item, scan, import). */
-function Fab({ raised }: { raised: boolean }) {
-  const s = useSession();
-  const { L } = usePrefs();
-  const go = useNavigate();
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [open]);
-  const actions = [
-    can(s.role, 'release:create') && { icon: 'bag', label: L('سند صرف جديد', 'New release'), to: '/release' },
-    can(s.role, 'item:create') && { icon: 'box', label: L('إضافة صنف', 'Add item'), to: '/inventory?new=1' },
-    hasFeature('barcodeScanner') && { icon: 'scan', label: L('مسح باركود', 'Scan barcode'), to: '/scan' },
-  ].filter(Boolean) as { icon: string; label: string; to: string }[];
-  if (!actions.length) return null;
-  return (
-    <div className={`fab-wrap no-print ${raised ? 'raised' : ''} ${open ? 'open' : ''}`}>
-      {open && <div className="fab-scrim" onClick={() => setOpen(false)} />}
-      {open && (
-        <div className="fab-menu" role="menu">
-          {actions.map((a) => (
-            <button key={a.to} role="menuitem" className="fab-item" onClick={() => { setOpen(false); go(a.to); }}>
-              <span>{a.label}</span><span className="fab-ico"><Icon name={a.icon} size={19} /></span>
-            </button>
-          ))}
-        </div>
-      )}
-      <button className="fab-btn" aria-expanded={open} aria-label={L('إجراء جديد', 'New')} onClick={() => setOpen((o) => !o)}>
-        <Icon name="plus" size={26} stroke={2.3} />
-      </button>
     </div>
   );
 }

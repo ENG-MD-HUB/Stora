@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { COL, db } from '../config/firebase';
 import { seconds } from '../lib/format';
 import { requireSession } from '../state/sessionStore';
@@ -26,19 +26,20 @@ export async function createRelease(lines: CartLine[], form: ReleaseForm, wareho
   if (lines.some((l) => l.item.warehouseId !== wh)) throw new Error('mixedStorages');
   for (const l of lines) if (l.qty > l.item.quantity) throw new Error(`insufficient:${l.item.name}`);
 
+  const releaseNumber = await nextNumber(s.companyId);
+  const ref = doc(collection(db, COL.releases));
   const items: ReleaseLine[] = [];
   for (const l of lines) {
     const after = await changeStock('withdraw', {
       itemId: l.item.id, quantity: l.qty, reason: form.reason, destination: form.installLocation, requesterName: form.requesterName,
-      notes: `Ticket:${form.ticketNo}|D/N:${form.dnNumber}|P/O:${form.poNumber}`,
+      notes: `Ticket:${form.ticketNo}|D/N:${form.dnNumber}|P/O:${form.poNumber}`, releaseId: ref.id, releaseNumber,
     });
     items.push({
       itemId: l.item.id, itemName: l.item.name, sapCode: l.item.sapCode ?? l.item.itemCode ?? '', modelNo: l.item.model ?? '',
       serialNumber: l.item.serialNumber ?? '', qtyReleased: l.qty, qtyRemaining: after, description: form.reason,
     });
   }
-  const releaseNumber = await nextNumber(s.companyId);
-  const ref = await addDoc(collection(db, COL.releases), {
+  await setDoc(ref, {
     companyId: s.companyId, releaseNumber, warehouseId: wh, warehouseName, ...form, items,
     releasedBy: s.uid, releasedByName: s.displayName, status: 'active', createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
@@ -70,11 +71,13 @@ export async function cancelRelease(id: string) {
     const it = await getDoc(iref);
     if (!it.exists()) continue;
     const before = (it.data().quantity as number) ?? 0;
-    const after = before + line.qtyReleased;
+    const back = line.qtyReleased - (line.qtyReturned ?? 0);
+    if (back <= 0) continue;
+    const after = before + back;
     b.update(iref, { quantity: after, updatedAt: serverTimestamp() });
     b.set(doc(collection(db, COL.movements)), {
       companyId: s.companyId, itemId: line.itemId, warehouseId: r.warehouseId, type: 'add', quantityBefore: before, quantityAfter: after,
-      performedBy: s.uid, performedByName: s.displayName, reason: `Release ${r.releaseNumber} cancelled`, notes: `Reversal of release ${r.releaseNumber}`,
+      performedBy: s.uid, performedByName: s.displayName, reason: `Release ${r.releaseNumber} cancelled`, notes: `Reversal of release ${r.releaseNumber}`, releaseId: id, releaseNumber: r.releaseNumber,
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
     });
   }
@@ -100,4 +103,22 @@ export async function fetchSignatories(companyId: string): Promise<Signatory[]> 
 
 export async function saveSignatories(companyId: string, signatories: Signatory[]) {
   await setDoc(doc(db, COL.settings, `${companyId}_release`), { signatories, updatedAt: serverTimestamp() });
+}
+
+/** Brings pieces of one release line back to stock, linked to the release number. */
+export async function returnFromRelease(id: string, itemId: string, qty: number, returnedBy: string, note: string) {
+  const ref = doc(db, COL.releases, id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('notFound');
+  const r = snap.data() as Release;
+  if (r.status === 'cancelled') throw new Error('cancelled');
+  const line = r.items.find((l) => l.itemId === itemId);
+  if (!line) throw new Error('notFound');
+  const open = line.qtyReleased - (line.qtyReturned ?? 0);
+  const n = Math.min(open, Math.max(1, Math.floor(qty)));
+  if (n <= 0) throw new Error('nothingToReturn');
+  await changeStock('return', { itemId, quantity: n, requesterName: returnedBy, reason: note, notes: `Return from release ${r.releaseNumber}`, releaseId: id, releaseNumber: r.releaseNumber });
+  const items = r.items.map((l) => (l.itemId === itemId ? { ...l, qtyReturned: (l.qtyReturned ?? 0) + n } : l));
+  await setDoc(ref, { items, updatedAt: serverTimestamp() }, { merge: true });
+  return n;
 }
