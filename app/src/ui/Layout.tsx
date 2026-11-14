@@ -102,8 +102,6 @@ export function Layout() {
             <Icon name="search" size={18} />{L('ابحث عن صنف أو رمز SAP', 'Search items or SAP code')}
           </button>
           <span className="grow" />
-          {!sup && can(s.role, 'item:create') && <button className="btn" onClick={() => go('/inventory?new=1')}><Icon name="plus" size={18} />{L('إضافة صنف', 'Add item')}</button>}
-          {!sup && can(s.role, 'release:create') && <button className="btn primary" onClick={() => go('/release')}><Icon name="bag" size={18} />{L('سند صرف', 'Release')}</button>}
         </header>
 
         <main className="page"><Outlet /></main>
@@ -117,6 +115,7 @@ export function Layout() {
         </NavLink>
       )}
 
+      {!sup && !loc.pathname.startsWith('/release') && !loc.pathname.startsWith('/scan') && <Fab raised={showCartBar} />}
       {!sup && (
         <nav className="tabbar no-print" aria-label={L('التنقل', 'Navigation')}>
           {tab('/', 'home', L('الرئيسية', 'Home'))}
@@ -135,6 +134,44 @@ export function Layout() {
           {tab('/settings', 'settings', L('الإعدادات', 'Settings'))}
         </nav>
       )}
+    </div>
+  );
+}
+
+/** Floating "+" button: the one place to start new work (release, item, scan, import). */
+function Fab({ raised }: { raised: boolean }) {
+  const s = useSession();
+  const { L } = usePrefs();
+  const go = useNavigate();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [open]);
+  const actions = [
+    can(s.role, 'release:create') && { icon: 'bag', label: L('سند صرف جديد', 'New release'), to: '/release' },
+    can(s.role, 'item:create') && { icon: 'box', label: L('إضافة صنف', 'Add item'), to: '/inventory?new=1' },
+    hasFeature('barcodeScanner') && { icon: 'scan', label: L('مسح باركود', 'Scan barcode'), to: '/scan' },
+    can(s.role, 'item:create') && { icon: 'up', label: L('استيراد Excel', 'Import Excel'), to: '/inventory?import=1' },
+  ].filter(Boolean) as { icon: string; label: string; to: string }[];
+  if (!actions.length) return null;
+  return (
+    <div className={`fab-wrap no-print ${raised ? 'raised' : ''} ${open ? 'open' : ''}`}>
+      {open && <div className="fab-scrim" onClick={() => setOpen(false)} />}
+      {open && (
+        <div className="fab-menu" role="menu">
+          {actions.map((a) => (
+            <button key={a.to} role="menuitem" className="fab-item" onClick={() => { setOpen(false); go(a.to); }}>
+              <span>{a.label}</span><span className="fab-ico"><Icon name={a.icon} size={19} /></span>
+            </button>
+          ))}
+        </div>
+      )}
+      <button className="fab-btn" aria-expanded={open} aria-label={L('إجراء جديد', 'New')} onClick={() => setOpen((o) => !o)}>
+        <Icon name="plus" size={26} stroke={2.3} />
+      </button>
     </div>
   );
 }

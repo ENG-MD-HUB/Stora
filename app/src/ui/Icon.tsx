@@ -36,6 +36,9 @@ const P: Record<string, string> = {
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5v.5',
   key: 'M14 7a4 4 0 1 1-2.8 6.8L4 21v-3h3v-3h3l1.2-1.2A4 4 0 0 1 14 7z',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  rows: 'M4 6h16M4 12h16M4 18h16',
+  table: 'M3 5h18v14H3zM3 10h18M3 15h18M9 5v14',
   refresh: 'M4 4v5h5M20 20v-5h-5M5.6 15A8 8 0 0 0 19 17M18.4 9A8 8 0 0 0 5 7',
 };
 
