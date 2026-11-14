@@ -87,6 +87,13 @@ export async function fetchRecentMovements(companyId: string, max = 8): Promise<
   }
 }
 
+/** All movements of a company since a number of days ago (filtered on the device: no extra index needed). */
+export async function fetchMovementsSince(companyId: string, days: number): Promise<Movement[]> {
+  const since = Date.now() / 1000 - days * 86400;
+  const snap = await getDocs(query(collection(db, COL.movements), where('companyId', '==', companyId)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Movement).filter((m) => seconds(m.createdAt as never) >= since).sort(byNewest);
+}
+
 export type ItemInput = Omit<Item, 'id' | 'companyId' | 'status' | 'internalId' | 'createdAt' | 'updatedAt' | 'entryDate' | 'expiryDate'> & { expiryDate?: string };
 
 const OPTIONAL = ['itemCode', 'notes', 'employeeNumber', 'modelCategory', 'model', 'serialNumber', 'assetsTag', 'sapCode', 'requestType', 'poNumber', 'dnNumber'] as const;

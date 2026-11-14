@@ -42,6 +42,7 @@ export function seconds(v: TS): number {
 
 export function greeting(lang: Lang): string {
   const h = new Date().getHours();
-  if (lang === 'ar') return h < 12 ? 'صباح الخير' : 'مساء الخير';
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const morning = h >= 4 && h < 12;
+  if (lang === 'ar') return morning ? 'صباح الخير' : 'مساء الخير';
+  return morning ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : 'Good evening';
 }
