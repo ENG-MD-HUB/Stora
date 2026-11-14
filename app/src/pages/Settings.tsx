@@ -11,6 +11,7 @@ import { PoweredBy } from '../ui/Brand';
 import { Icon } from '../ui/Icon';
 import { useToast } from '../ui/kit';
 import { ImportSheet } from './ImportSheet';
+import { ResetSheet } from './ResetSheet';
 
 /** One settings row: label on one side, value/control on the other. */
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
@@ -44,6 +45,8 @@ export default function Settings() {
   const [sig, setSig] = useState<Signatory[] | null>(null);
   const [savingSig, setSavingSig] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const canReset = s.role === 'manager' && s.companyId !== 'system';
   const canImport = can(s.role, 'item:create') && s.companyId !== 'system';
   const canSig = can(s.role, 'settings:company') && s.companyId !== 'system';
   const dev = deviceInfo();
@@ -120,7 +123,7 @@ export default function Settings() {
         </section>
       )}
 
-      {canImport && (
+      {(canImport || canReset) && (
         <section className="card set-list">
           <h2 className="section-title">{L('البيانات', 'Data')}</h2>
           <Row label={L('استيراد مواد من Excel', 'Import materials from Excel')} hint={L('لنقل مخزون قديم أو إضافة أصناف كثيرة مرة واحدة', 'Move an old stock list or add many items at once')}>
@@ -129,6 +132,11 @@ export default function Settings() {
           <Row label={L('قالب الاستيراد', 'Import template')} hint={L('ملف Excel جاهز بالأعمدة المطلوبة', 'Ready Excel file with the required columns')}>
             <a className="btn sm" href={`${import.meta.env.BASE_URL}templates/STORA-import-template.xlsx`} download><Icon name="download" size={16} />{L('تحميل', 'Download')}</a>
           </Row>
+          {canReset && (
+            <Row label={L('حذف البيانات', 'Delete data')} hint={L('مسح بيانات التجربة: الحركات، السندات، السجل، الأصناف…', 'Clear test data: movements, releases, log, items…')}>
+              <button className="btn sm danger" onClick={() => setResetting(true)}><Icon name="trash" size={16} />{L('حذف…', 'Delete…')}</button>
+            </Row>
+          )}
         </section>
       )}
 
@@ -142,6 +150,7 @@ export default function Settings() {
       </section>
 
       {importing && <ImportSheet onClose={() => setImporting(false)} />}
+      {resetting && <ResetSheet onClose={() => setResetting(false)} />}
       <button className="btn danger block" onClick={signOut}><Icon name="logout" size={18} />{L('تسجيل الخروج', 'Sign out')}</button>
       <div style={{ display: 'flex', justifyContent: 'center' }}><PoweredBy height={12} /></div>
     </div>

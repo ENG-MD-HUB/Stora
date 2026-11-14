@@ -8,7 +8,7 @@ import { Empty, Loading, useLoad } from '../ui/kit';
 const LABELS: Record<string, [string, string]> = {
   LOGIN: ['تسجيل دخول', 'Signed in'], LOGOUT: ['تسجيل خروج', 'Signed out'], SESSION_TIMEOUT: ['انتهاء الجلسة', 'Session expired'],
   ITEM_CREATE: ['إضافة صنف', 'Item added'], ITEM_EDIT: ['تعديل صنف', 'Item edited'], ITEM_WITHDRAW: ['صرف صنف', 'Item withdrawn'], ITEM_RETURN: ['إرجاع صنف', 'Item returned'],
-  ITEM_ARCHIVE: ['أرشفة صنف', 'Item archived'], ITEM_DELETE: ['حذف صنف', 'Item deleted'], ITEM_RESTORE: ['استعادة صنف', 'Item restored'], QTY_CHANGE: ['تغيير كمية', 'Quantity changed'],
+  ITEM_ARCHIVE: ['أرشفة صنف', 'Item archived'], DATA_RESET: ['حذف بيانات', 'Data deleted'], ITEM_DELETE: ['حذف صنف', 'Item deleted'], ITEM_RESTORE: ['استعادة صنف', 'Item restored'], QTY_CHANGE: ['تغيير كمية', 'Quantity changed'],
   WAREHOUSE_CREATE: ['إنشاء مكان تخزين', 'Storage created'], WAREHOUSE_EDIT: ['تعديل مكان تخزين', 'Storage edited'], WAREHOUSE_ARCHIVE: ['أرشفة/حذف مكان تخزين', 'Storage archived/deleted'], WAREHOUSE_RESTORE: ['استعادة مكان تخزين', 'Storage restored'],
   USER_CREATE: ['تسجيل مستخدم', 'User registered'], USER_EDIT: ['تعديل مستخدم', 'User updated'], USER_DEACTIVATE: ['تعطيل مستخدم', 'User disabled'],
   RELEASE_CREATE: ['إصدار سند صرف', 'Release issued'], RELEASE_CANCEL: ['إلغاء سند صرف', 'Release cancelled'],
