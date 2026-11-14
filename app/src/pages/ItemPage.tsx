@@ -63,15 +63,16 @@ function MovementRow({ m }: { m: Movement }) {
 
 /** Totals for the item: received − released = remaining. */
 function stats(it: Item, moves: Movement[]) {
-  let out = 0, back = 0;
-  const rel = new Set<string>();
+  let out = 0, back = 0, returned = 0, n = 0;
+  const cancelled = new Set(moves.filter(isReversal).map((m) => m.releaseId || releaseRef(m)));
   for (const m of moves) {
     const d = m.quantityAfter - m.quantityBefore;
-    if (m.type === 'withdraw') { out += -d; if (m.releaseId) rel.add(m.releaseId); }
-    else if (m.type === 'return' || isReversal(m)) back += d;
+    if (m.type === 'withdraw') { out += -d; if (!cancelled.has(m.releaseId || releaseRef(m) || '-')) n++; }
+    else if (m.type === 'return') { back += d; returned += d; }
+    else if (isReversal(m)) back += d;
   }
   const released = Math.max(0, out - back);
-  return { released, returned: back, releases: rel.size, remaining: it.quantity, received: it.quantity + released };
+  return { released, returned, releases: n, remaining: it.quantity, received: it.quantity + released };
 }
 
 const EXTRA: [keyof Item, string, string, boolean?][] = [

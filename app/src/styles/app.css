@@ -336,7 +336,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .cart-add:hover { border-color: var(--primary); }
 .cart-add.in { background: color-mix(in srgb, var(--primary) 18%, transparent); border-color: color-mix(in srgb, var(--primary) 55%, transparent); }
 .qty-pick { display: flex; flex-direction: column; gap: 12px; }
-.qty-pick > p { margin: 0; font-size: 13.5px; }
+.qty-pick > p { margin: 0; font-size: 13.5px; text-align: center; }
 .qty-pick .stepper { justify-content: center; }
 .fab-badge { position: absolute; top: -6px; inset-inline-end: -6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; background: var(--text); color: var(--bg); font-size: 12px; font-weight: 700; display: grid; place-items: center; border: 2px solid var(--bg); }
 a.fab-wrap { text-decoration: none; }
