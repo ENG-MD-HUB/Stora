@@ -101,7 +101,7 @@ export function Layout() {
       </div>
 
       {!sup && can(s.role, 'release:create') && loc.pathname !== '/' && !loc.pathname.startsWith('/release') && !loc.pathname.startsWith('/scan') && (
-        <NavLink to="/release" className="fab-wrap no-print" aria-label={L(`السلة، ${cart.entries.length} أصناف`, `Cart, ${cart.entries.length} items`)}>
+        <NavLink to="/release" className={`fab-wrap no-print ${cart.entries.length ? '' : 'fab-empty'}`} aria-label={L(`السلة، ${cart.entries.length} أصناف`, `Cart, ${cart.entries.length} items`)}>
           <span className="fab-btn"><Icon name="cart" size={25} stroke={2.1} />{cart.entries.length > 0 && <span className="fab-badge mono">{cart.entries.length}</span>}</span>
         </NavLink>
       )}
