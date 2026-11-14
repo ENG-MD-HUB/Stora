@@ -1,5 +1,11 @@
 # STORA — Changelog
 
+## 3.0.0 — 2026-11-15
+- STORA 3.0 is now the main app at /Stora/ (rebuilt from source in app/).
+- The 2.x app is archived at /Stora/v2/; /Stora/beta/ redirects to /Stora/.
+- Releases go through the cart; item page shows received / released / remaining / minimum; returns per release line; new home.
+
+
 ## v2.1 · November 2026
 
 ### Improvements

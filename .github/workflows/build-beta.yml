@@ -1,6 +1,7 @@
-name: Build STORA 3 (beta)
+name: Build STORA
 
-# Builds the source in app/ and commits the result to beta/ (served at /Stora/beta/).
+# Builds the source in app/ and publishes it at the repository root (served at /Stora/).
+# The archived 2.x app lives in v2/ and the old beta link in beta/ only redirects.
 on:
   push:
     branches: [main]
@@ -24,10 +25,14 @@ jobs:
         working-directory: app
       - run: npm run build
         working-directory: app
+      - name: Publish build at the site root
+        run: |
+          rm -rf assets brand templates
+          cp -r app/dist/. .
       - name: Commit build output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add beta
-          git diff --cached --quiet || git commit -m "Build beta from app/ [skip ci]"
+          git add index.html sw.js manifest.webmanifest assets brand templates
+          git diff --cached --quiet || git commit -m "Build STORA from app/ [skip ci]"
           git push

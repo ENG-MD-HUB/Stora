@@ -1,38 +1,19 @@
-/* STORA service worker — keeps the app shell available offline.
-   Firestore data itself is cached by Firestore's own offline persistence. */
-const VERSION = "stora-v2.1";
-const SHELL = ["/Stora/", "/Stora/index.html", "/Stora/manifest.webmanifest", "/Stora/favicon.png", "/Stora/icon-192.png", "/Stora/icon-512.png"];
-
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting()));
-});
-
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", (e) => {
-  const req = e.request;
-  if (req.method !== "GET") return;
-  const url = new URL(req.url);
-  const sameApp = url.origin === self.location.origin && url.pathname.startsWith("/Stora/");
-  const fonts = url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com";
-  if (!sameApp && !fonts) return; // never touch Firebase / Firestore traffic
-
-  if (fonts) {
-    // cache-first for fonts
-    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); return res; })));
+/* STORA 3 service worker: app shell offline (Firestore caches data itself). */
+const VERSION = 'stora-3.0.0';
+const SCOPE = '/Stora/';
+self.addEventListener('install', (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll([SCOPE, SCOPE + 'index.html'])).catch(() => {}).then(() => self.skipWaiting())); });
+self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('fetch', (e) => {
+  const r = e.request; if (r.method !== 'GET') return;
+  const u = new URL(r.url);
+  // /Stora/v2/ (archived 2.x) and /Stora/beta/ (old link) are left alone.
+  const app = u.origin === location.origin && u.pathname.startsWith('/Stora/') && !u.pathname.startsWith('/Stora/v2/') && !u.pathname.startsWith('/Stora/beta/');
+  const font = u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com';
+  if (!app && !font) return;
+  if (font || u.pathname.includes('/assets/')) {
+    e.respondWith(caches.match(r).then((hit) => hit || fetch(r).then((res) => { if (res.ok) { const c = res.clone(); caches.open(VERSION).then((x) => x.put(r, c)); } return res; })));
     return;
   }
-  // network-first for the app, fall back to cache when offline
-  e.respondWith(
-    fetch(req)
-      .then((res) => {
-        if (res && res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
-        return res;
-      })
-      .catch(() => caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("/Stora/index.html") : Response.error())))
-  );
+  e.respondWith(fetch(r).then((res) => { if (res.ok) { const c = res.clone(); caches.open(VERSION).then((x) => x.put(r, c)); } return res; })
+    .catch(() => caches.match(r).then((hit) => hit || caches.match(SCOPE + 'index.html'))));
 });

@@ -1,28 +1,24 @@
 <!doctype html>
-<html lang="en" dir="ltr" data-version="2.1">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#07070f" />
-    <meta name="description" content="STORA — Warehouse Management System" />
-    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0A0E17" />
+    <meta name="description" content="STORA — نظام إدارة المستودعات" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="STORA" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/Stora/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/Stora/favicon-16.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/Stora/icon-192.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/Stora/icon-180.png" />
-    <link rel="manifest" href="/Stora/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/Stora/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/Stora/icon-180.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
     <title>STORA</title>
     <script>
-      /* apply saved language direction before first paint */
-      try { var l = localStorage.getItem("wms_language"); if (l && l.indexOf("ar") === 0) { document.documentElement.lang = "ar"; document.documentElement.dir = "rtl"; document.documentElement.classList.add("stora-ar"); } } catch (e) {}
+      try{var t=localStorage.getItem('stora.theme')||'system';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';var l=localStorage.getItem('stora.lang')||'en';document.documentElement.lang=l;document.documentElement.dir=l==='ar'?'rtl':'ltr';}catch(e){}
     </script>
-    <script type="module" crossorigin src="/Stora/assets/app.js?v=2.1"></script>
-    <script defer src="/Stora/assets/stora-ext.js?v=2.1"></script>
-    <link rel="stylesheet" crossorigin href="/Stora/assets/style.css?v=2.1">
-    <link rel="stylesheet" href="/Stora/assets/stora-theme.css?v=2.1">
+    <script type="module" crossorigin src="/Stora/assets/index-D6HLQqGi.js"></script>
+    <link rel="stylesheet" crossorigin href="/Stora/assets/index-V9JYcHai.css">
   </head>
   <body>
     <div id="root"></div>

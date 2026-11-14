@@ -1,38 +1,17 @@
 {
   "name": "STORA",
   "short_name": "STORA",
-  "description": "STORA — Warehouse Management System",
+  "description": "STORA — نظام إدارة المستودعات",
   "start_url": "/Stora/",
   "scope": "/Stora/",
   "display": "standalone",
-  "background_color": "#07070f",
-  "theme_color": "#07070f",
-  "orientation": "portrait-primary",
+  "background_color": "#0A0E17",
+  "theme_color": "#0A0E17",
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
-    {
-      "src": "/Stora/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/Stora/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/Stora/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/Stora/icon-180.png",
-      "sizes": "180x180",
-      "type": "image/png"
-    }
-  ],
-  "lang": "ar",
-  "dir": "auto"
+    { "src": "/Stora/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/Stora/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/Stora/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }
