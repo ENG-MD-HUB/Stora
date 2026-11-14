@@ -16,7 +16,7 @@ export function ItemForm({ item, defaultWarehouse, onClose, onSaved }: { item?: 
   const [f, setF] = useState<Record<string, string>>(() => ({
     warehouseId: item?.warehouseId ?? defaultWarehouse ?? (warehouses.length === 1 ? warehouses[0].id : ''),
     name: item?.name ?? '', itemCode: item?.itemCode ?? '', projectName: item?.projectName ?? '', owner: item?.owner ?? '',
-    quantity: String(item?.quantity ?? ''), unit: item?.unit ?? '', minThreshold: String(item?.minThreshold ?? 5), notes: item?.notes ?? '',
+    quantity: String(item?.quantity ?? ''), unit: item?.unit ?? 'pcs', minThreshold: String(item?.minThreshold ?? 5), notes: item?.notes ?? '',
     expiryDate: exp ? exp.toISOString().slice(0, 10) : '',
     ...Object.fromEntries(EXTRA.map((k) => [k, (item?.[k] as string) ?? ''])),
   }));

@@ -38,8 +38,7 @@ function StockSheet({ item, kind, onClose, onDone }: { item: Item; kind: Action;
     <Sheet title={titles[kind]} onClose={onClose} footer={<><button className="btn primary" style={{ flex: 1 }} disabled={busy || qty < 1 || qty > max} onClick={go}>{busy ? <span className="spinner" /> : L('تأكيد', 'Confirm')}</button><button className="btn" onClick={onClose}>{L('إلغاء', 'Cancel')}</button></>}>
       <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div className="grow"><p className="title">{item.name}</p><p className="sub">{L('المتوفر', 'Available')} <span className="mono">{item.quantity}</span> {item.unit}</p></div>
-        {kind === 'withdraw' ? <Stepper value={qty} max={Math.max(1, max)} onChange={setQty} /> :
-          <input className="input mono" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))} style={{ width: 110 }} aria-label={L('الكمية', 'Quantity')} />}
+        <Stepper value={qty} max={kind === 'withdraw' ? Math.max(1, max) : 99999} onChange={setQty} />
       </div>
       {kind !== 'add' && <Field label={kind === 'withdraw' ? L('المستلم', 'Received by') : L('أرجعه', 'Returned by')}><input className="input" value={who} onChange={(e) => setWho(e.target.value)} /></Field>}
       {kind === 'withdraw' && <Field label={L('الوجهة', 'Destination')}><input className="input" value={where} onChange={(e) => setWhere(e.target.value)} /></Field>}
@@ -75,7 +74,7 @@ export function ItemPage() {
   const nav = useNavigate();
   const cached = items.find((i) => i.id === id) ?? null;
   const item = useLoad(() => fetchItem(id).catch(() => null), [id]);
-  const moves = useLoad(() => fetchMovements(id), [id]);
+  const moves = useLoad(() => fetchMovements(id, s.companyId), [id, s.companyId]);
   const [action, setAction] = useState<Action | null>(null);
   const [edit, setEdit] = useState(false);
   const [confirm, setConfirm] = useState<'archive' | 'delete' | null>(null);
@@ -128,7 +127,7 @@ export function ItemPage() {
         {can(s.role, 'item:edit') && <button className="btn sm" onClick={() => setEdit(true)}><Icon name="edit" size={16} />{L('تعديل البيانات', 'Edit details')}</button>}
         {can(s.role, 'item:archive') && (it.status === 'active'
           ? <button className="btn sm" onClick={() => setConfirm('archive')}><Icon name="archive" size={16} />{L('أرشفة', 'Archive')}</button>
-          : <button className="btn sm" onClick={async () => { await setItemStatus(it.id, 'active'); toast(L('تمت الاستعادة', 'Restored')); refresh(); }}><Icon name="restore" size={16} />{L('استعادة', 'Restore')}</button>)}
+          : <button className="btn sm" onClick={async () => { await setItemStatus(it.id, 'active', it.name); toast(L('تمت الاستعادة', 'Restored')); refresh(); }}><Icon name="restore" size={16} />{L('استعادة', 'Restore')}</button>)}
         {can(s.role, 'item:delete') && <button className="btn sm danger" onClick={() => setConfirm('delete')}><Icon name="trash" size={16} />{L('حذف', 'Delete')}</button>}
       </div>
 
@@ -154,8 +153,8 @@ export function ItemPage() {
 
       {action && <StockSheet item={it} kind={action} onClose={() => setAction(null)} onDone={() => { setAction(null); refresh(); }} />}
       {edit && <ItemForm item={it} onClose={() => setEdit(false)} onSaved={() => { setEdit(false); refresh(); }} />}
-      {confirm === 'archive' && <Confirm title={L('أرشفة الصنف؟', 'Archive item?')} text={L('سيختفي من المخزون النشط ويمكن استعادته لاحقاً.', 'It will be hidden from active stock and can be restored later.')} confirmLabel={L('أرشفة', 'Archive')} onClose={() => setConfirm(null)} onConfirm={async () => { await setItemStatus(it.id, 'archived'); cart.remove(it.id); toast(L('تمت الأرشفة', 'Archived')); refresh(); }} />}
-      {confirm === 'delete' && <Confirm danger title={L('حذف نهائي؟', 'Delete permanently?')} text={L('سيُحذف الصنف نهائياً ولا يمكن التراجع. سجل الحركات يبقى محفوظاً.', 'The item will be deleted for good. Movement history is kept.')} confirmLabel={L('حذف', 'Delete')} onClose={() => setConfirm(null)} onConfirm={async () => { await deleteItem(it.id); cart.remove(it.id); toast(L('تم الحذف', 'Deleted')); reload(); nav('/inventory'); }} />}
+      {confirm === 'archive' && <Confirm title={L('أرشفة الصنف؟', 'Archive item?')} text={L('سيختفي من المخزون النشط ويمكن استعادته لاحقاً.', 'It will be hidden from active stock and can be restored later.')} confirmLabel={L('أرشفة', 'Archive')} onClose={() => setConfirm(null)} onConfirm={async () => { await setItemStatus(it.id, 'archived', it.name); cart.remove(it.id); toast(L('تمت الأرشفة', 'Archived')); refresh(); }} />}
+      {confirm === 'delete' && <Confirm danger title={L('حذف نهائي؟', 'Delete permanently?')} text={L('سيُحذف الصنف نهائياً ولا يمكن التراجع. سجل الحركات يبقى محفوظاً.', 'The item will be deleted for good. Movement history is kept.')} confirmLabel={L('حذف', 'Delete')} onClose={() => setConfirm(null)} onConfirm={async () => { await deleteItem(it.id, it.name); cart.remove(it.id); toast(L('تم الحذف', 'Deleted')); reload(); nav('/inventory'); }} />}
     </>
   );
 }

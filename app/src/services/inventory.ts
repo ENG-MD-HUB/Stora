@@ -66,12 +66,13 @@ export async function fetchItem(id: string): Promise<Item | null> {
   return d.exists() ? ({ id: d.id, ...d.data() } as Item) : null;
 }
 
-export async function fetchMovements(itemId: string): Promise<Movement[]> {
+export async function fetchMovements(itemId: string, companyId: string): Promise<Movement[]> {
+  // companyId must be in the query: security rules only allow reading a company's own movements.
   try {
-    const snap = await getDocs(query(collection(db, COL.movements), where('itemId', '==', itemId), orderBy('createdAt', 'desc'), limit(60)));
+    const snap = await getDocs(query(collection(db, COL.movements), where('companyId', '==', companyId), where('itemId', '==', itemId), orderBy('createdAt', 'desc'), limit(60)));
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Movement);
   } catch {
-    const snap = await getDocs(query(collection(db, COL.movements), where('itemId', '==', itemId)));
+    const snap = await getDocs(query(collection(db, COL.movements), where('companyId', '==', companyId), where('itemId', '==', itemId)));
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Movement).sort(byNewest).slice(0, 60);
   }
 }
@@ -159,7 +160,7 @@ export async function changeStock(kind: 'withdraw' | 'add' | 'return', c: StockC
     performedBy: s.uid, performedByName: s.displayName, notes: c.notes ?? '', createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
   await b.commit();
-  await audit(kind === 'withdraw' ? 'ITEM_WITHDRAW' : kind === 'return' ? 'ITEM_RETURN' : 'QTY_CHANGE', 'item', c.itemId, { previousValue: { quantity: it.quantity }, newValue: { quantity: after } });
+  await audit(kind === 'withdraw' ? 'ITEM_WITHDRAW' : kind === 'return' ? 'ITEM_RETURN' : 'QTY_CHANGE', 'item', c.itemId, { previousValue: { quantity: it.quantity }, newValue: { name: it.name, quantity: after } });
   if (kind === 'withdraw' && after <= it.minThreshold) notifyLowStock(s.companyId, c.itemId, it.name, after);
   return after;
 }
@@ -174,14 +175,14 @@ async function notifyLowStock(companyId: string, itemId: string, name: string, q
   } catch { /* optional */ }
 }
 
-export async function setItemStatus(id: string, status: 'active' | 'archived') {
+export async function setItemStatus(id: string, status: 'active' | 'archived', name?: string) {
   await updateDoc(doc(db, COL.items, id), { status, updatedAt: serverTimestamp() });
-  await audit(status === 'active' ? 'ITEM_RESTORE' : 'ITEM_ARCHIVE', 'item', id);
+  await audit(status === 'active' ? 'ITEM_RESTORE' : 'ITEM_ARCHIVE', 'item', id, name ? { newValue: { name } } : {});
 }
 
-export async function deleteItem(id: string) {
+export async function deleteItem(id: string, name?: string) {
   await deleteDoc(doc(db, COL.items, id));
-  await audit('ITEM_ARCHIVE', 'item', id, { metadata: { permanentDelete: true } });
+  await audit('ITEM_DELETE', 'item', id, { newValue: name ? { name } : null, metadata: { permanentDelete: true } });
 }
 
 export type StockLevel = 'ok' | 'low' | 'out';

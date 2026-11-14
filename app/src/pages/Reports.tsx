@@ -32,11 +32,14 @@ export default function Reports() {
   }, [s.companyId]);
 
   const since = Date.now() / 1000 - 30 * 86400;
-  const out30 = (moves.data ?? []).filter((m) => m.type === 'withdraw' && seconds(m.createdAt) >= since);
-  const units30 = out30.reduce((a, m) => a + (m.quantityBefore - m.quantityAfter), 0);
+  // Net units out in 30 days: withdrawals minus the stock put back by cancelled releases.
+  const isReversal = (m: Movement) => m.type === 'add' && /^Reversal of release/.test(m.notes ?? '');
+  const out30 = (moves.data ?? []).filter((m) => (m.type === 'withdraw' || isReversal(m)) && seconds(m.createdAt) >= since);
+  const units30 = Math.max(0, out30.reduce((a, m) => a + (m.quantityBefore - m.quantityAfter), 0));
   const top = useMemo(() => {
     const map = new Map<string, number>();
     out30.forEach((m) => map.set(m.itemId, (map.get(m.itemId) ?? 0) + (m.quantityBefore - m.quantityAfter)));
+    map.forEach((n, k) => { if (n <= 0) map.delete(k); });
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, n]) => ({ name: items.find((i) => i.id === id)?.name ?? '—', n }));
   }, [out30, items]);
   const byWh = warehouses.map((w) => ({ w, n: items.filter((i) => i.warehouseId === w.id).length, units: items.filter((i) => i.warehouseId === w.id).reduce((a, i) => a + i.quantity, 0) }));
