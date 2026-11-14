@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { APP } from '../config/app';
-import { FONTS, usePrefs, type FontPref, type ThemePref } from '../lib/prefs';
+import { usePrefs, type ThemePref } from '../lib/prefs';
 import { can, roleLabel } from '../lib/permissions';
 import { deviceInfo, installId } from '../lib/telemetry';
 import { updateMyName } from '../services/auth';
@@ -36,7 +36,7 @@ function Segmented<T extends string>({ value, options, onChange }: { value: T; o
 export default function Settings() {
   const s = useSession();
   const { company, setSession, signOut } = useAuth();
-  const { L, lang, setLang, theme, setTheme, font, setFont } = usePrefs();
+  const { L, lang, setLang, theme, setTheme } = usePrefs();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(s.displayName);
@@ -46,14 +46,7 @@ export default function Settings() {
   const dev = deviceInfo();
 
   useEffect(() => { if (canSig) fetchSignatories(s.companyId).then(setSig); }, [canSig, s.companyId]);
-  // Load every font once on this page so the choices can be previewed.
-  useEffect(() => {
-    if (document.getElementById('font-previews')) return;
-    const l = document.createElement('link');
-    l.id = 'font-previews'; l.rel = 'stylesheet';
-    l.href = `https://fonts.googleapis.com/css2?${Object.values(FONTS).map((f) => `family=${f.css}`).join('&')}&display=swap`;
-    document.head.appendChild(l);
-  }, []);
+
   const setField = (i: number, k: keyof Signatory, v: string) => setSig((list) => list && list.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
 
   async function saveName() {
@@ -101,16 +94,6 @@ export default function Settings() {
         <Row label={L('اللغة', 'Language')}>
           <Segmented value={lang} onChange={setLang} options={[['en', 'English'], ['ar', 'العربية']]} />
         </Row>
-        <div className="set-row" style={{ alignItems: 'flex-start' }}>
-          <div className="set-label"><span>{L('الخط الإنجليزي', 'English font')}</span><small>{L('الخط العربي ثابت: IBM Plex Sans Arabic', 'Arabic always uses IBM Plex Sans Arabic')}</small></div>
-          <div className="font-grid" role="radiogroup">
-            {(Object.keys(FONTS) as FontPref[]).map((k) => (
-              <button key={k} role="radio" aria-checked={font === k} className={`font-opt ${font === k ? 'on' : ''}`} onClick={() => setFont(k)} style={{ fontFamily: `${FONTS[k].family}, sans-serif` }}>
-                <b>Aa 123</b><span>{FONTS[k].label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Release form signatories */}
