@@ -8,6 +8,7 @@ import type { Item } from '../services/types';
 import { useCart, useData, useSession } from '../state/app';
 import { Icon } from '../ui/Icon';
 import { Empty, StockBar, StockChip, useToast } from '../ui/kit';
+import { ImportSheet } from './ImportSheet';
 import { ItemForm } from './ItemForm';
 
 type Filter = 'all' | 'low' | 'out' | 'archived';
@@ -65,10 +66,11 @@ export function Inventory() {
   const [wh, setWh] = useState(params.get('wh') ?? '');
   const [archived, setArchived] = useState<Item[] | null>(null);
   const [showNew, setShowNew] = useState(params.get('new') === '1');
+  const [showImport, setShowImport] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (params.get('focus') === '1') searchRef.current?.focus(); }, [params]);
-  useEffect(() => { if (params.get('new') === '1') setShowNew(true); }, [params]);
+  useEffect(() => { if (params.get('new') === '1') setShowNew(true); setWh(params.get('wh') ?? ''); }, [params]);
   useEffect(() => {
     if (filter !== 'archived' || archived) return;
     fetchItems(s.companyId, 'archived').then((a) => setArchived(s.assignedWarehouseIds.length && s.role !== 'manager' ? a.filter((i) => s.assignedWarehouseIds.includes(i.warehouseId)) : a)).catch(() => setArchived([]));
@@ -88,9 +90,21 @@ export function Inventory() {
     <>
       <div className="head">
         <div><h1 className="h1">{L('المخزون', 'Inventory')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{L(`${items.length} صنف في ${warehouses.length} أماكن تخزين`, `${items.length} items in ${warehouses.length} storages`)}</p></div>
-        {can(s.role, 'item:create') && <button className="btn primary sm mobile-only" style={{ width: 44, height: 44, padding: 0 }} onClick={() => setShowNew(true)} aria-label={L('إضافة صنف', 'Add item')}><Icon name="plus" stroke={2.3} /></button>}
+        {can(s.role, 'item:create') && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn" onClick={() => setShowImport(true)}><Icon name="up" size={18} /><span className="desktop-only">{L('استيراد Excel', 'Import Excel')}</span></button>
+            <button className="btn primary sm mobile-only" style={{ width: 48, height: 48, padding: 0 }} onClick={() => setShowNew(true)} aria-label={L('إضافة صنف', 'Add item')}><Icon name="plus" stroke={2.3} /></button>
+          </div>
+        )}
       </div>
 
+      {wh && (
+        <div className="callout" style={{ alignItems: 'center', padding: '10px 14px' }}>
+          <Icon name="storage" size={20} />
+          <span className="grow">{L('أنت في', 'You are in')} <b>{whName(wh)}</b> · <span className="muted">{L(`${items.filter((i) => i.warehouseId === wh).length} صنف`, `${items.filter((i) => i.warehouseId === wh).length} items`)}</span></span>
+          <button className="btn sm ghost" onClick={() => { setWh(''); setParams({}, { replace: true }); }}>{L('كل الأماكن', 'All storages')} ✕</button>
+        </div>
+      )}
       <label className="search">
         <Icon name="search" size={18} />
         <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('ابحث بالاسم أو الرمز أو SAP', 'Search name, code or SAP')} aria-label={L('بحث', 'Search')} />
@@ -122,6 +136,7 @@ export function Inventory() {
       )}
       {list.length > 300 && <p className="muted" style={{ textAlign: 'center', fontSize: 13 }}>{L('استخدم البحث لعرض باقي الأصناف', 'Use search to see the rest')}</p>}
 
+      {showImport && <ImportSheet onClose={() => setShowImport(false)} />}
       {showNew && <ItemForm defaultWarehouse={wh || undefined} onClose={() => { setShowNew(false); setParams({}, { replace: true }); }} onSaved={(id) => { setShowNew(false); reload(); go(`/item/${id}`); }} />}
     </>
   );

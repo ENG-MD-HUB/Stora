@@ -6,7 +6,8 @@ import { usePrefs } from '../lib/prefs';
 import { can } from '../lib/permissions';
 import { stockLevel } from '../services/inventory';
 import type { Movement } from '../services/types';
-import { useData, useSession } from '../state/app';
+import { useAuth, useData, useSession } from '../state/app';
+import { PrintFooter, PrintHeader } from '../ui/Brand';
 import { Icon } from '../ui/Icon';
 import { useLoad } from '../ui/kit';
 
@@ -24,6 +25,7 @@ export default function Reports() {
   const s = useSession();
   const { L, lang } = usePrefs();
   const { items, warehouses, whName } = useData();
+  const { company } = useAuth();
   const moves = useLoad(async () => {
     const snap = await getDocs(query(collection(db, COL.movements), where('companyId', '==', s.companyId)));
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Movement).sort((a, b) => seconds(b.createdAt) - seconds(a.createdAt));
@@ -47,7 +49,11 @@ export default function Reports() {
 
   return (
     <>
-      <div><h1 className="h1">{L('التقارير', 'Reports')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{L('ملخص المخزون وحركة آخر 30 يوماً', 'Stock summary and the last 30 days')}</p></div>
+      <div className="print-only"><PrintHeader title={L('تقرير المخزون', 'Inventory report')} company={company} meta={<div>{fmtDate(new Date(), 'en')}</div>} /></div>
+      <div className="head no-print">
+        <div><h1 className="h1">{L('التقارير', 'Reports')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{L('ملخص المخزون وحركة آخر 30 يوماً', 'Stock summary and the last 30 days')}</p></div>
+        <button className="btn" onClick={() => window.print()}><Icon name="print" size={18} />{L('طباعة التقرير', 'Print report')}</button>
+      </div>
 
       <section className="grid g2 g4-d">
         <div className="card stat"><p>{L('الأصناف', 'Items')}</p><b>{items.length}</b></div>
@@ -75,8 +81,17 @@ export default function Reports() {
         </section>
       </div>
 
+      <section className="print-only" style={{ marginTop: 12 }}>
+        <h2 style={{ fontSize: 14, margin: '0 0 6px' }}>{L('أصناف تحتاج توريد', 'Items to restock')} ({low.length})</h2>
+        <table className="tbl" style={{ border: '1px solid #ccc' }}>
+          <thead><tr><th>{L('الصنف', 'Item')}</th><th>{L('المكان', 'Storage')}</th><th>{L('الكمية', 'Qty')}</th><th>{L('الحد', 'Min')}</th><th>SAP</th></tr></thead>
+          <tbody>{low.map((i) => <tr key={i.id}><td>{i.name}</td><td>{whName(i.warehouseId)}</td><td>{i.quantity}</td><td>{i.minThreshold}</td><td>{i.sapCode || i.itemCode}</td></tr>)}</tbody>
+        </table>
+        <PrintFooter />
+      </section>
+
       {exp && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <section className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <h2 className="section-title">{L('تصدير إلى Excel', 'Export to Excel')}</h2>
           <div className="list">
             <button className="row" onClick={() => downloadCsv('stora-inventory', [header, ...items.map(row)])}><span className="ico plain"><Icon name="download" size={18} /></span><span className="grow"><p className="title">{L('المخزون الكامل', 'Full inventory')}</p><p className="sub">{L(`${items.length} صنف`, `${items.length} items`)}</p></span></button>

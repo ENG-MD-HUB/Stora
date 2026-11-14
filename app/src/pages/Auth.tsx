@@ -5,6 +5,7 @@ import { usePrefs } from '../lib/prefs';
 import { audit } from '../services/audit';
 import { authError, login, register, resetPassword } from '../services/auth';
 import { useAuth } from '../state/app';
+import { PoweredBy } from '../ui/Brand';
 import { Icon, Logo } from '../ui/Icon';
 import { Field, useToast } from '../ui/kit';
 
@@ -24,6 +25,7 @@ function Frame({ title, sub, children }: { title: string; sub: string; children:
           </div>
         </div>
         {children}
+        <div style={{ display: 'flex', justifyContent: 'center' }}><PoweredBy /></div>
         <p className="muted" style={{ textAlign: 'center', fontSize: 12.5, margin: 0 }}>
           STORA {APP.version} · <button className="btn ghost sm" style={{ height: 'auto', padding: 0, border: 0, color: 'var(--accent-text)' }} onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}>{L('English', 'العربية')}</button>
         </p>

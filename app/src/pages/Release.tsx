@@ -5,6 +5,7 @@ import { usePrefs } from '../lib/prefs';
 import { can } from '../lib/permissions';
 import { cancelRelease, createRelease, fetchRelease, fetchReleases, fetchSignatories, type ReleaseForm } from '../services/releases';
 import { useAuth, useCart, useData, useSession } from '../state/app';
+import { PrintFooter, PrintHeader } from '../ui/Brand';
 import { Icon } from '../ui/Icon';
 import { Confirm, Empty, Field, Loading, Stepper, useLoad, useToast } from '../ui/kit';
 
@@ -185,10 +186,7 @@ export function ReleaseView() {
 
       {/* Printed material release form (English, as used on site) */}
       <div className="print-form" dir="ltr" style={{ display: 'none', color: '#000', fontFamily: 'Arial, sans-serif', fontSize: 11 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2px solid #000', paddingBottom: 6, marginBottom: 8 }}>
-          <div><div style={{ fontSize: 18, fontWeight: 700 }}>MATERIAL RELEASE FORM</div><div>{company}</div></div>
-          <div style={{ textAlign: 'right' }}><div><b>Release No:</b> {rel.releaseNumber}</div><div><b>Date:</b> {fmtDate(rel.createdAt, 'en')}</div><div><b>Storage:</b> {rel.warehouseName}</div></div>
-        </div>
+        <PrintHeader title="MATERIAL RELEASE FORM" company={company} meta={<><div><b>Release No:</b> {rel.releaseNumber}</div><div><b>Date:</b> {fmtDate(rel.createdAt, 'en')}</div><div><b>Storage:</b> {rel.warehouseName}</div></>} />
         <div style={{ display: 'flex', gap: 18, marginBottom: 8, flexWrap: 'wrap' }}>
           <span><b>TICKET NO.:</b> {rel.ticketNo || '—'}</span><span><b>D/N NO.:</b> {rel.dnNumber || '—'}</span><span><b>P/O NO.:</b> {rel.poNumber || '—'}</span>
           <span><b>INSTALL LOCATION:</b> {rel.installLocation}</span><span><b>RECEIVED BY:</b> {rel.requesterName || '—'}</span>
@@ -211,6 +209,7 @@ export function ReleaseView() {
           ))}
         </div>
         {rel.status === 'cancelled' && <div style={{ marginTop: 10, fontWeight: 700 }}>*** CANCELLED ***</div>}
+        <PrintFooter />
       </div>
 
       {cancel && <Confirm danger title={L('إلغاء السند؟', 'Cancel release?')} text={L('ستعود الكميات إلى المخزون ويُسجّل الإلغاء.', 'Quantities go back to stock and the cancellation is logged.')} confirmLabel={L('إلغاء السند', 'Cancel release')} onClose={() => setCancel(false)} onConfirm={async () => { await cancelRelease(rel.id); toast(L('تم إلغاء السند', 'Release cancelled')); r.reload(); reload(); }} />}
