@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { usePrefs } from '../lib/prefs';
 import { roleLabel } from '../lib/permissions';
 import { useAuth, useSession } from '../state/app';
+import { PoweredBy } from '../ui/Brand';
 import { Icon } from '../ui/Icon';
 import { useNav } from '../ui/Layout';
 
@@ -27,6 +28,7 @@ export default function More() {
         ))}
       </div>
       <button className="btn danger block" onClick={signOut}><Icon name="logout" size={18} />{L('تسجيل الخروج', 'Sign out')}</button>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}><PoweredBy height={13} /></div>
     </>
   );
 }

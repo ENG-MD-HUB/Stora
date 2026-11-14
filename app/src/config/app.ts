@@ -2,7 +2,7 @@
 export const APP = {
   id: 'stora',
   name: 'STORA',
-  version: '3.0.0-beta.3',
+  version: '3.0.0-beta.4',
   build: '2026-11',
   developer: 'Mohammad M. Alamoudi',
   superAdminEmail: 'md.aisystems@gmail.com',
@@ -25,3 +25,16 @@ export const hasFeature = (k: FeatureKey) => FEATURES[k];
 
 /** Optional central monitoring endpoint (empty = disabled). Never required for the app to work. */
 export const TELEMETRY_ENDPOINT = '';
+
+/**
+ * ENG-MD-HUB control center. Owns STORA companies + join codes and receives the usage heartbeat.
+ * The publishable key is public by design (it can only call the public RPCs).
+ * `appKey` (ck_...) comes from the control center's STORA page; empty = heartbeat off.
+ */
+export const CONTROL = {
+  url: 'https://lfdngkibdnkwhqeasmuw.supabase.co',
+  publishableKey: 'sb_publishable_B738d43Eg2U1A9jkqymAwQ_QF11RD9s',
+  sdkUrl: 'https://eng-md-hub.github.io/control/sdk/control.js',
+  dashboard: 'https://eng-md-hub.github.io/control/#/app/stora',
+  appKey: '',
+} as const;

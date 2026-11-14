@@ -32,7 +32,7 @@ function Frame({ title, sub, children }: { title: string; sub: string; children:
           {children}
         </div>
       </main>
-      <footer className="auth-foot"><PoweredBy height={13} /><span className="mono ltr" style={{ fontSize: 11 }}>v{APP.version}</span></footer>
+      <footer className="auth-foot"><PoweredBy height={13} /><span className="mono ltr" style={{ fontSize: 10.5, opacity: .7 }}>v{APP.version}</span></footer>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 /* STORA 3 service worker: app shell offline (Firestore caches data itself). */
-const VERSION = 'stora-3.0.0-beta.3';
+const VERSION = 'stora-3.0.0-beta.4';
 const SCOPE = '/Stora/beta/';
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll([SCOPE, SCOPE + 'index.html'])).catch(() => {}).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });

@@ -3,9 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { hasFeature } from './config/app';
 import { initTelemetry } from './lib/telemetry';
+import { startControlHeartbeat } from './services/control';
 import './styles/app.css';
 
 initTelemetry();
+startControlHeartbeat();
 
 if (hasFeature('offline') && 'serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {

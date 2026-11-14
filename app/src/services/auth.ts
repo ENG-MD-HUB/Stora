@@ -6,6 +6,7 @@ import { APP } from '../config/app';
 import { builtInFor, BUILT_IN_COMPANIES } from '../config/companies';
 import { auth, COL, db } from '../config/firebase';
 import { registering } from '../state/sessionStore';
+import { controlCompanyActive, controlResolveCode } from './control';
 import type { Session } from './types';
 
 export function isSuperEmail(email?: string | null) {
@@ -15,7 +16,15 @@ export function isSuperEmail(email?: string | null) {
 /** Resolve a join code → company. Registry (joinCodes/{CODE}) first, then built-in list. */
 export async function resolveJoinCode(raw: string): Promise<{ companyId: string; name: string } | null> {
   const code = raw.trim().toUpperCase();
-  if (!/^[A-Z0-9]{4,16}$/.test(code)) return null;
+  if (code.length < 4 || code.length > 16 || /\s/.test(code)) return null;
+  // 1) Control center is the source of truth when reachable.
+  const c = await controlResolveCode(code);
+  if (c !== undefined) {
+    if (!c) return null;
+    const b = builtInFor(c.companyId);
+    return { companyId: b ? b.id : c.companyId, name: c.name || b?.name || '' };
+  }
+  // 2) Offline fallback: STORA's own registry, then the built-in list.
   try {
     const d = await getDoc(doc(db, COL.joinCodes, code));
     if (d.exists()) {
@@ -35,6 +44,7 @@ export async function loadSession(uid: string): Promise<Session> {
   const u = snap.data();
   if (!u.isActive) throw new Error('accountDisabled');
   const sup = isSuperEmail(u.email);
+  if (!sup && u.companyId && u.companyId !== 'system' && !(await controlCompanyActive(u.companyId)).active) throw new Error('companyDisabled');
   return {
     uid, email: u.email, displayName: u.displayName ?? '', role: sup ? 'super_admin' : u.role,
     companyId: u.companyId, assignedWarehouseIds: u.assignedWarehouseIds ?? [], isActive: true,
@@ -91,6 +101,7 @@ export async function updateMyName(uid: string, name: string) {
 export function authError(e: unknown, L: (a: string, b: string) => string): string {
   const code = (e as { code?: string; message?: string })?.code ?? (e as Error)?.message ?? '';
   if (code.includes('invalidJoinCode')) return L('رمز الشركة غير صحيح. راجع مديرك.', 'Invalid company code. Check with your manager.');
+  if (code.includes('companyDisabled')) return L('تم إيقاف حساب شركتك. تواصل مع مدير النظام.', 'Your company account is disabled. Contact the system administrator.');
   if (code.includes('accountDisabled')) return L('تم تعطيل حسابك. تواصل مع مديرك.', 'Your account is disabled. Contact your manager.');
   if (code.includes('notFound')) return L('الحساب غير مكتمل. سجّل من جديد بنفس البريد ورمز الشركة.', 'Account incomplete. Register again with the same email and company code.');
   if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return L('البريد أو كلمة المرور غير صحيحة.', 'Wrong email or password.');
