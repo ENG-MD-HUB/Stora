@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { CONTROL } from '../config/app';
 import { usePrefs } from '../lib/prefs';
-import { fetchCompanies, generateCode, saveCompany, setCompanyActive, type CompanyRow } from '../services/companies';
+import { fetchCompanies, generateCode, saveCompany, type CompanyRow } from '../services/companies';
 import { Icon } from '../ui/Icon';
 import { Field, Loading, Sheet, useLoad, useToast } from '../ui/kit';
 
@@ -27,8 +28,9 @@ export default function Companies() {
     <>
       <div className="head">
         <div><h1 className="h1">{L('الشركات', 'Companies')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{L('إدارة الشركات ورموز الانضمام', 'Companies and join codes')}</p></div>
-        <button className="btn primary" onClick={() => setForm({ name: '', joinCode: generateCode(), active: true })}><Icon name="plus" size={18} />{L('شركة جديدة', 'New company')}</button>
+        <a className="btn primary" href={CONTROL.dashboard} target="_blank" rel="noreferrer"><Icon name="building" size={18} />{L('إدارة الشركات في مركز التحكم', 'Manage in Control Center')}</a>
       </div>
+      <div className="callout"><Icon name="info" /><div>{L('الشركات ورموز الانضمام تُدار الآن من مركز التحكم. هنا ترى عدد مستخدمي كل شركة في STORA.', 'Companies and join codes are now managed in the Control Center. This page shows each company\'s STORA users.')}</div></div>
       <section className="grid g2 g4-d">
         <div className="card stat"><p>{L('الشركات', 'Companies')}</p><b>{rows.length}</b></div>
         <div className="card stat"><p>{L('النشطة', 'Active')}</p><b>{rows.filter((r) => r.active).length}</b></div>
@@ -49,10 +51,6 @@ export default function Companies() {
                 {c.joinCode && <button className="btn sm" onClick={() => { navigator.clipboard?.writeText(c.joinCode); toast(L('تم النسخ', 'Copied')); }}>{L('نسخ', 'Copy')}</button>}
               </div>
               <p className="muted" style={{ margin: 0, fontSize: 13 }}>{c.users == null ? '—' : L(`${c.users} مستخدم · ${c.managers ?? 0} مدير`, `${c.users} users · ${c.managers ?? 0} managers`)}{c.pending ? L(` · ${c.pending} بانتظار`, ` · ${c.pending} waiting`) : ''}{c.builtIn ? L(' · أساسية', ' · built-in') : ''}</p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn sm" style={{ flex: 1 }} onClick={() => setForm({ id: c.id, name: c.name, joinCode: c.joinCode, active: c.active })}>{L('تعديل', 'Edit')}</button>
-                <button className={`btn sm ${c.active ? 'danger' : ''}`} style={{ flex: 1 }} onClick={async () => { try { await setCompanyActive(c, !c.active); list.reload(); } catch { toast(L('تعذّر الحفظ', 'Could not save'), 'error'); } }}>{c.active ? L('تعطيل', 'Disable') : L('تفعيل', 'Enable')}</button>
-              </div>
             </div>
           ))}
         </div>

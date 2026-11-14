@@ -224,9 +224,14 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .auth-tag { margin: 0; font-size: 11.5px; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); direction: ltr; }
 @keyframes shine { to { background-position: -220% 0; } }
 .auth-card { display: flex; flex-direction: column; gap: 18px; padding: 26px 22px; border-radius: 22px; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); box-shadow: var(--shadow); backdrop-filter: blur(14px); }
-.auth-foot { position: relative; z-index: 1; width: 100%; max-width: 410px; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 0 calc(16px + env(safe-area-inset-bottom)); color: var(--muted); opacity: .85; }
+.auth-foot { position: relative; z-index: 1; width: 100%; max-width: 410px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; padding: 14px 0 calc(16px + env(safe-area-inset-bottom)); color: var(--muted); opacity: .85; }
 .code-boxes { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
 .code-boxes input { width: 100%; height: 50px; text-align: center; border-radius: 11px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; text-transform: uppercase; outline: none; padding: 0; }
 .code-boxes input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 @media (max-width: 360px) { .code-boxes { gap: 4px; } .code-boxes input { height: 44px; font-size: 17px; } }
 [data-theme='light'] .auth-word { background-image: linear-gradient(90deg, #1F6FBF, #4A93DD, #0F4F9F, #1F6FBF); }
+
+.brand { gap: 12px; padding: 4px 6px 6px; }
+.brand-icon { width: 38px; height: 38px; object-fit: contain; border-radius: 10px; }
+.brand-word { font-family: 'IBM Plex Mono', monospace; font-size: 21px; font-weight: 700; letter-spacing: .2em; direction: ltr; background: linear-gradient(90deg, var(--accent-text), var(--primary), var(--accent-text)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+[data-theme='light'] .brand-word { background-image: linear-gradient(90deg, #1F6FBF, #4A93DD, #0F4F9F); }

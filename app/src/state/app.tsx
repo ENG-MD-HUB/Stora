@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { setSession(await loadSession(u.uid)); }
     catch (e) {
       // During registration the profile may not exist yet; the register flow sets the session itself.
-      if ((e as Error).message === 'accountDisabled') await logout();
+      if (['accountDisabled', 'companyDisabled'].includes((e as Error).message)) await logout();
       else setSession(null);
     } finally { setReady(true); }
   }), [setSession]);

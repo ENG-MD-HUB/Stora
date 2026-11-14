@@ -16,7 +16,8 @@ service cloud.firestore {
     function meRef() { return /databases/$(database)/documents/users/$(request.auth.uid); }
     function hasProfile() { return signedIn() && exists(meRef()); }
     function me() { return get(meRef()).data; }
-    function active() { return hasProfile() && me().isActive == true; }
+    // New sign-ups stay "pending" (no data access) until a manager approves them.
+    function active() { return hasProfile() && me().isActive == true && me().get('pendingApproval', false) != true; }
     function myRole() { return me().role; }
     function myCompany() { return me().companyId; }
 
@@ -41,10 +42,9 @@ service cloud.firestore {
     function manager(cid) { return isSuper() || (active() && myRole() == 'manager' && cid in myGroup()); }
     function editor(cid) { return isSuper() || (active() && myRole() in ['manager', 'data_entry'] && cid in myGroup()); }
 
-    function validCompany(cid) {
-      return cid in ['company_002', 'company_001', 'company_1780749182580', 'company_003', 'company_1780750610332']
-        || exists(/databases/$(database)/documents/companies/$(cid));
-    }
+    // Company ids now come from the control center (join code check happens there);
+    // a wrong id gives nothing: the account stays pending until a manager of that company approves it.
+    function validCompany(cid) { return cid is string && cid.size() > 0 && cid.size() < 100 && cid != 'system'; }
 
     // ---------- join codes (doc id = the code) ----------
     // Anyone can check one code they typed (needed during sign-up); nobody can list them.
@@ -70,6 +70,7 @@ service cloud.firestore {
         isSuper() || (
           request.resource.data.role == 'viewer'
           && request.resource.data.isActive == true
+          && request.resource.data.pendingApproval == true
           && request.resource.data.assignedWarehouseIds.size() == 0
           && validCompany(request.resource.data.companyId)
         ));

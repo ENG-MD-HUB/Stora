@@ -6,9 +6,9 @@ import { can, roleLabel } from '../lib/permissions';
 import { onScan, useHardwareScanner } from '../lib/hwScanner';
 import { findByCode } from '../services/inventory';
 import { useAuth, useCart, useData, useSession } from '../state/app';
-import { SiteFooter } from './Brand';
+import { PoweredBy } from './Brand';
 import { useToast } from './kit';
-import { Icon, Logo } from './Icon';
+import { Icon } from './Icon';
 
 export function useNav() {
   const s = useSession();
@@ -80,7 +80,7 @@ export function Layout() {
     <div className="shell">
       <Offline />
       <aside className="sidebar">
-        <div className="brand"><Logo /><b>STORA</b></div>
+        <div className="brand"><img src={`${import.meta.env.BASE_URL}brand/stora-icon.png`} alt="" className="brand-icon" /><span className="brand-word">STORA</span></div>
         <nav className="nav">
           {nav.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'on' : '')}>
@@ -93,6 +93,7 @@ export function Layout() {
           <div className="grow"><p className="title" style={{ fontSize: 14 }}>{s.displayName}</p><p className="sub" style={{ fontSize: 12 }}>{roleLabel(s.role, L)} · {company}</p></div>
           <button className="icon-btn" style={{ width: 36, height: 36 }} onClick={signOut} aria-label={L('تسجيل الخروج', 'Sign out')}><Icon name="logout" size={17} /></button>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: -8 }}><PoweredBy height={12} /></div>
       </aside>
 
       <div className="content">
@@ -105,7 +106,7 @@ export function Layout() {
           {!sup && can(s.role, 'release:create') && <button className="btn primary" onClick={() => go('/release')}><Icon name="bag" size={18} />{L('سند صرف', 'Release')}</button>}
         </header>
 
-        <main className="page"><Outlet /><SiteFooter /></main>
+        <main className="page"><Outlet /></main>
       </div>
 
       {showCartBar && (
