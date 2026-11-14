@@ -26,7 +26,7 @@ function applyTheme(t: ThemePref) {
 }
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => read<Lang>('stora.lang', 'ar'));
+  const [lang, setLangState] = useState<Lang>(() => read<Lang>('stora.lang', 'en'));
   const [theme, setThemeState] = useState<ThemePref>(() => read<ThemePref>('stora.theme', 'system'));
 
   useEffect(() => {

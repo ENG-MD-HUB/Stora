@@ -2,7 +2,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { auth } from '../config/firebase';
 import { isManager } from '../lib/permissions';
-import { loadSession, logout } from '../services/auth';
+import { loadSession, logout, needsEmailVerification } from '../services/auth';
 import { companyName } from '../services/companies';
 import { fetchItems, fetchWarehouses } from '../services/inventory';
 import type { Item, Session, Warehouse } from '../services/types';
@@ -12,6 +12,9 @@ import { registering, setSession as setGlobal } from './sessionStore';
 interface AuthState {
   session: Session | null;
   ready: boolean;
+  /** Signed in but the email address is not confirmed yet. */
+  unverified: boolean;
+  recheck: () => void;
   company: string;
   setSession: (s: Session | null) => void;
   signOut: () => Promise<void>;
@@ -23,8 +26,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setS] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [company, setCompany] = useState('');
+  const [unverified, setUnverified] = useState(false);
+  const recheck = useCallback(() => setUnverified(needsEmailVerification(auth.currentUser)), []);
 
-  const setSession = useCallback((s: Session | null) => { setGlobal(s); setS(s); }, []);
+  const setSession = useCallback((s: Session | null) => { setGlobal(s); setS(s); setUnverified(needsEmailVerification(auth.currentUser)); }, []);
 
   useEffect(() => onAuthStateChanged(auth, async (u) => {
     if (!u) { setSession(null); setReady(true); return; }
@@ -55,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => { await logout(); setSession(null); }, [setSession]);
   if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__setSession = (x: Session) => { setSession(x); setReady(true); };
-  const value = useMemo(() => ({ session, ready, company, setSession, signOut }), [session, ready, company, setSession, signOut]);
+  const value = useMemo(() => ({ session, ready, unverified, recheck, company, setSession, signOut }), [session, ready, unverified, recheck, company, setSession, signOut]);
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
