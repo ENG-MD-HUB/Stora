@@ -36,5 +36,5 @@ export const CONTROL = {
   publishableKey: 'sb_publishable_B738d43Eg2U1A9jkqymAwQ_QF11RD9s',
   sdkUrl: 'https://eng-md-hub.github.io/control/sdk/control.js',
   dashboard: 'https://eng-md-hub.github.io/control/#/app/stora',
-  appKey: '',
+  appKey: 'ck_stora_urhq3ojhf92ErpLwZbp866FAOG5xkAFL',
 } as const;
