@@ -272,7 +272,7 @@
 
   // Service worker (app shell offline cache)
   if ("serviceWorker" in navigator && location.protocol === "https:") {
-    window.addEventListener("load", function () { navigator.serviceWorker.register("/Stora/sw.js", { scope: "/Stora/" }).catch(function () {}); });
+    window.addEventListener("load", function () { navigator.serviceWorker.register("/Stora/v2/sw.js", { scope: "/Stora/v2/" }).catch(function () {}); });
   }
   window.__storaI18n = { tr: tr, dict: AR };
 })();
