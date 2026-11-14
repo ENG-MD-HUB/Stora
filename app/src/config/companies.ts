@@ -3,12 +3,13 @@
 export interface BuiltInCompany {
   id: string;
   name: string;
+  nameAr?: string;
   joinCodes: string[];
   aliases: string[];
 }
 
 export const BUILT_IN_COMPANIES: BuiltInCompany[] = [
-  { id: 'company_002', name: 'مطارات جدة', joinCodes: ['JEDCO001'], aliases: ['company_001'] },
+  { id: 'company_002', name: 'Jeddah Airports', nameAr: 'مطارات جدة', joinCodes: ['JEDCO001'], aliases: ['company_001'] },
   { id: 'company_1780749182580', name: 'ICAD', joinCodes: ['ICAD0001', 'ICAD0000'], aliases: ['company_003', 'company_1780750610332'] },
 ];
 

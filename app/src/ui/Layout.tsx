@@ -90,7 +90,7 @@ export function Layout() {
         </nav>
         <div className="card" style={{ marginTop: 'auto', padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className="ico plain" style={{ width: 38, height: 38, fontWeight: 700 }}>{(s.displayName || '?').trim().charAt(0)}</span>
-          <div className="grow"><p className="title" style={{ fontSize: 14 }}>{s.displayName}</p><p className="sub" style={{ fontSize: 12 }}>{roleLabel(s.role, L)} · {company}</p></div>
+          <div className="grow"><p className="title" style={{ fontSize: 14, whiteSpace: 'normal', lineHeight: 1.3 }}>{s.displayName}</p><p className="sub" style={{ fontSize: 12 }}>{roleLabel(s.role, L)} · {company}</p></div>
           <button className="icon-btn" style={{ width: 36, height: 36 }} onClick={signOut} aria-label={L('تسجيل الخروج', 'Sign out')}><Icon name="logout" size={17} /></button>
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: -8 }}><PoweredBy height={12} /></div>

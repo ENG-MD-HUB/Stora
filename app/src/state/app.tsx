@@ -3,6 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { auth } from '../config/firebase';
 import { isManager } from '../lib/permissions';
 import { loadSession, logout, needsEmailVerification } from '../services/auth';
+import { builtInFor } from '../config/companies';
+import { usePrefs } from '../lib/prefs';
 import { companyName } from '../services/companies';
 import { fetchItems, fetchWarehouses } from '../services/inventory';
 import type { Item, Session, Warehouse } from '../services/types';
@@ -47,6 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session.companyId === 'system') { setCompany('STORA Admin'); return; }
     companyName(session.companyId).then(setCompany);
   }, [session]);
+  const { lang } = usePrefs();
+  const b = session ? builtInFor(session.companyId) : null;
+  const companyShown = b?.nameAr && lang === 'ar' ? b.nameAr : company;
 
   // Sign out after 20 minutes without activity (same as STORA 2).
   useEffect(() => {
@@ -60,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => { await logout(); setSession(null); }, [setSession]);
   if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__setSession = (x: Session) => { setSession(x); setReady(true); };
-  const value = useMemo(() => ({ session, ready, unverified, recheck, company, setSession, signOut }), [session, ready, unverified, recheck, company, setSession, signOut]);
+  const value = useMemo(() => ({ session, ready, unverified, recheck, company: companyShown, setSession, signOut }), [session, ready, unverified, recheck, companyShown, setSession, signOut]);
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
