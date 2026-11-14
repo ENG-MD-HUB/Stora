@@ -1,0 +1,145 @@
+rules_version = '2';
+
+// STORA v2.0 — Firestore security rules
+// Publish from: Firebase Console → Firestore Database → Rules → paste → Publish.
+// Each company can only see its own data. The Super Admin can see everything.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    function isSuper() {
+      return signedIn() && request.auth.token.email != null
+        && request.auth.token.email.lower() == 'md.aisystems@gmail.com';
+    }
+    function meRef() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function hasProfile() { return signedIn() && exists(meRef()); }
+    function me() { return get(meRef()).data; }
+    function active() { return hasProfile() && me().isActive == true; }
+    function myRole() { return me().role; }
+    function myCompany() { return me().companyId; }
+
+    // Company ids that belong to the same company (built-in aliases from app.js).
+    // Older company documents created with a random id are matched by their join code.
+    function legacyCode(cid) {
+      return exists(/databases/$(database)/documents/companies/$(cid))
+        ? get(/databases/$(database)/documents/companies/$(cid)).data.get('joinCode', '').upper()
+        : '';
+    }
+    function groupOf(cid) {
+      let jc = legacyCode(cid);
+      return (cid in ['company_002', 'company_001'] || jc == 'JEDCO001')
+        ? ['company_002', 'company_001', cid]
+        : (cid in ['company_1780749182580', 'company_003', 'company_1780750610332'] || jc in ['ICAD0001', 'ICAD0000'])
+          ? ['company_1780749182580', 'company_003', 'company_1780750610332', cid]
+          : [cid];
+    }
+    function myGroup() { return groupOf(myCompany()); }
+
+    function member(cid) { return isSuper() || (active() && cid in myGroup()); }
+    function manager(cid) { return isSuper() || (active() && myRole() == 'manager' && cid in myGroup()); }
+    function editor(cid) { return isSuper() || (active() && myRole() in ['manager', 'data_entry'] && cid in myGroup()); }
+
+    function validCompany(cid) {
+      return cid in ['company_002', 'company_001', 'company_1780749182580', 'company_003', 'company_1780750610332']
+        || exists(/databases/$(database)/documents/companies/$(cid));
+    }
+
+    // ---------- join codes (doc id = the code) ----------
+    // Anyone can check one code they typed (needed during sign-up); nobody can list them.
+    match /joinCodes/{code} {
+      allow get: if true;
+      allow list, write: if isSuper();
+    }
+
+    // ---------- companies ----------
+    match /companies/{cid} {
+      allow get: if member(cid);
+      allow list, write: if isSuper();
+    }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isSuper()
+                    || (hasProfile() && myRole() == 'manager' && active() && resource.data.companyId in myGroup()));
+      allow list: if isSuper() || (active() && myRole() == 'manager' && resource.data.companyId in myGroup());
+
+      // Self sign-up: always starts as an active viewer with no storages
+      allow create: if signedIn() && request.auth.uid == uid && (
+        isSuper() || (
+          request.resource.data.role == 'viewer'
+          && request.resource.data.isActive == true
+          && request.resource.data.assignedWarehouseIds.size() == 0
+          && validCompany(request.resource.data.companyId)
+        ));
+
+      // A user may update only their own name / login time
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'lastLoginAt', 'updatedAt']);
+
+      // Managers manage users of their company (and can move a new user into their company id)
+      allow update: if isSuper() || (active() && myRole() == 'manager'
+        && resource.data.companyId in myGroup()
+        && request.resource.data.companyId in myGroup()
+        && request.resource.data.role in ['manager', 'data_entry', 'viewer']
+        && uid != request.auth.uid);
+
+      allow delete: if isSuper() || (active() && myRole() == 'manager'
+        && resource.data.companyId in myGroup() && uid != request.auth.uid);
+    }
+
+    // ---------- company data ----------
+    match /warehouses/{id} {
+      allow read: if member(resource.data.companyId);
+      allow create: if editor(request.resource.data.companyId);
+      allow update: if editor(resource.data.companyId) && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if manager(resource.data.companyId);
+    }
+    match /items/{id} {
+      allow read: if member(resource.data.companyId);
+      allow create: if editor(request.resource.data.companyId);
+      allow update: if editor(resource.data.companyId) && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if editor(resource.data.companyId);
+    }
+    match /movements/{id} {
+      allow read: if member(resource.data.companyId);
+      allow create: if editor(request.resource.data.companyId);
+      allow update: if editor(resource.data.companyId);
+      allow delete: if manager(resource.data.companyId);
+    }
+    match /releases/{id} {
+      allow read: if member(resource.data.companyId);
+      allow create: if editor(request.resource.data.companyId);
+      allow update: if editor(resource.data.companyId) && request.resource.data.companyId == resource.data.companyId;
+      allow delete: if manager(resource.data.companyId);
+    }
+    match /auditLogs/{id} {
+      allow read: if manager(resource.data.companyId);
+      allow create: if isSuper() || (active() && request.resource.data.companyId == myCompany()
+                       && request.resource.data.userId == request.auth.uid);
+      allow update: if false;
+      allow delete: if manager(resource.data.companyId);
+    }
+    match /notifications/{id} {
+      allow read: if isSuper() || (member(resource.data.companyId)
+                     && (resource.data.recipientUid == request.auth.uid || myRole() == 'manager'));
+      allow create: if member(request.resource.data.companyId);
+      allow update: if member(resource.data.companyId)
+        && (resource.data.recipientUid == request.auth.uid || myRole() == 'manager');
+      allow delete: if manager(resource.data.companyId)
+        || (member(resource.data.companyId) && resource.data.recipientUid == request.auth.uid);
+    }
+
+    // Release-form signatories: doc id = "<companyId>_release"
+    match /company_settings/{docId} {
+      allow read: if isSuper() || (active() && docId == myCompany() + '_release');
+      allow write: if isSuper() || (active() && myRole() == 'manager' && docId == myCompany() + '_release');
+    }
+
+    // Everything else is closed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

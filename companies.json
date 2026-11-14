@@ -1,16 +1,7 @@
 {
+  "_note": "Reference only. Built-in companies live in assets/app.js; new companies are managed from the Companies page (Super Admin) and stored in Firestore (companies + joinCodes).",
   "companies": [
-    {
-      "id": "company_001",
-      "name": "Jeddah Airports",
-      "joinCode": "JEDCO001",
-      "active": true
-    },
-    {
-      "id": "company_002",
-      "name": "company2",
-      "joinCode": "COMPANY2",
-      "active": true
-    }
+    { "id": "company_002", "name": "Jeddah Airports", "joinCode": "JEDCO001", "aliases": ["company_001"], "active": true },
+    { "id": "company_1780749182580", "name": "ICAD", "joinCode": "ICAD0001", "joinCodes": ["ICAD0001", "ICAD0000"], "aliases": ["company_003", "company_1780750610332"], "active": true }
   ]
 }
