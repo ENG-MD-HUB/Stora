@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom';
-import { hasFeature } from '../config/app';
 import { fmtAgo, greeting } from '../lib/format';
 import { usePrefs } from '../lib/prefs';
-import { can, isManager, roleLabel } from '../lib/permissions';
+import { isManager, roleLabel } from '../lib/permissions';
 import { fetchRecentMovements, stockLevel } from '../services/inventory';
 import { fetchUsers, isPending } from '../services/users';
 import { useAuth, useData, useSession } from '../state/app';
@@ -67,12 +66,6 @@ export function Home() {
         )}
       </section>
 
-      <section className="grid g3">
-        {can(s.role, 'release:create') && <Link to="/release" className="quick primary"><Icon name="bag" size={22} stroke={2} />{L('صرف مواد', 'Release')}</Link>}
-        {can(s.role, 'item:create') && <Link to="/inventory?new=1" className="quick"><Icon name="plus" size={22} stroke={2} />{L('إضافة صنف', 'Add item')}</Link>}
-        {hasFeature('barcodeScanner') && <Link to="/scan" className="quick"><Icon name="scan" size={22} stroke={2} />{L('مسح باركود', 'Scan')}</Link>}
-        {!can(s.role, 'item:create') && <Link to="/inventory" className="quick"><Icon name="box" size={22} stroke={2} />{L('المخزون', 'Inventory')}</Link>}
-      </section>
 
       <div className="split">
         <section className="grid g3" style={{ alignContent: 'start' }}>

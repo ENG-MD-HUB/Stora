@@ -12,6 +12,73 @@ import { ImportSheet } from './ImportSheet';
 import { ItemForm } from './ItemForm';
 
 type Filter = 'all' | 'low' | 'out' | 'archived';
+type View = 'cards' | 'list' | 'table' | 'grouped';
+type Sort = 'new' | 'name' | 'qtyAsc' | 'qtyDesc';
+const VIEWS: [View, string, [string, string]][] = [['cards', 'grid', ['بطاقات', 'Cards']], ['list', 'rows', ['قائمة', 'List']], ['table', 'table', ['جدول', 'Table']], ['grouped', 'storage', ['حسب المكان', 'By storage']]];
+
+function ItemRow({ item, whName }: { item: Item; whName: string }) {
+  const s = useSession();
+  const lvl = stockLevel(item);
+  return (
+    <Link to={`/item/${item.id}`} className="row">
+      <span className={`dotlvl ${lvl}`} aria-hidden="true" />
+      <span className="grow"><p className="title" style={{ fontSize: 14.5 }}>{item.name}</p><p className="sub mono" style={{ fontSize: 12 }}>{[item.sapCode || item.itemCode, whName].filter(Boolean).join(' · ')}</p></span>
+      <b className="mono" style={{ color: lvl === 'ok' ? 'var(--text)' : `var(--${lvl})` }}>{item.quantity}</b>
+      <span className="muted" style={{ fontSize: 12, minWidth: 34 }}>{item.unit}</span>
+      {can(s.role, 'release:create') && item.status === 'active' && <AddToCart item={item} />}
+    </Link>
+  );
+}
+
+function ItemsTable({ items, whName }: { items: Item[]; whName: (id: string) => string }) {
+  const { L } = usePrefs();
+  const nav = useNavigate();
+  return (
+    <div className="list scroll-x">
+      <table className="tbl tbl-hover">
+        <thead><tr><th>{L('الصنف', 'Item')}</th><th>{L('المكان', 'Storage')}</th><th>SAP</th><th>{L('المشروع', 'Project')}</th><th style={{ textAlign: 'end' }}>{L('الكمية', 'Qty')}</th><th style={{ textAlign: 'end' }}>{L('الحد', 'Min')}</th><th>{L('الحالة', 'Status')}</th></tr></thead>
+        <tbody>
+          {items.map((i) => {
+            const lvl = stockLevel(i);
+            return (
+              <tr key={i.id} onClick={() => nav(`/item/${i.id}`)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && nav(`/item/${i.id}`)}>
+                <td style={{ fontWeight: 600 }}>{i.name}</td><td className="muted">{whName(i.warehouseId)}</td><td className="mono">{i.sapCode || i.itemCode || '—'}</td><td className="muted">{i.projectName}</td>
+                <td className="mono" style={{ textAlign: 'end', fontWeight: 600, color: lvl === 'ok' ? undefined : `var(--${lvl})` }}>{i.quantity} <span className="muted" style={{ fontWeight: 400 }}>{i.unit}</span></td>
+                <td className="mono muted" style={{ textAlign: 'end' }}>{i.minThreshold}</td>
+                <td>{i.status === 'archived' ? <span className="chip plain">{L('مؤرشف', 'Archived')}</span> : <StockChip level={lvl} />}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ItemsView({ view, items, whName, groups }: { view: View; items: Item[]; whName: (id: string) => string; groups: { id: string; name: string }[] }) {
+  if (view === 'table') return <ItemsTable items={items} whName={whName} />;
+  if (view === 'list') return <div className="list">{items.map((i) => <ItemRow key={i.id} item={i} whName={whName(i.warehouseId)} />)}</div>;
+  if (view === 'grouped') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {groups.map((g) => {
+          const its = items.filter((i) => i.warehouseId === g.id);
+          return (
+            <section key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="storage" size={18} /><b>{g.name}</b><span className="chip plain">{its.length}</span></div>
+              <div className="list">{its.map((i) => <ItemRow key={i.id} item={i} whName="" />)}</div>
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
+  return (
+    <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 330px), 1fr))' }}>
+      {items.map((i) => <ItemCard key={i.id} item={i} whName={whName(i.warehouseId)} />)}
+    </div>
+  );
+}
 
 export function AddToCart({ item }: { item: Item }) {
   const { L } = usePrefs();
@@ -66,11 +133,14 @@ export function Inventory() {
   const [wh, setWh] = useState(params.get('wh') ?? '');
   const [archived, setArchived] = useState<Item[] | null>(null);
   const [showNew, setShowNew] = useState(params.get('new') === '1');
-  const [showImport, setShowImport] = useState(false);
+  const [view, setViewState] = useState<View>(() => { try { return (localStorage.getItem('stora.view') as View) || 'cards'; } catch { return 'cards'; } });
+  const setView = (v: View) => { setViewState(v); try { localStorage.setItem('stora.view', v); } catch { /* ignore */ } };
+  const [sort, setSort] = useState<Sort>('new');
+  const [showImport, setShowImport] = useState(params.get('import') === '1');
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (params.get('focus') === '1') searchRef.current?.focus(); }, [params]);
-  useEffect(() => { if (params.get('new') === '1') setShowNew(true); setWh(params.get('wh') ?? ''); }, [params]);
+  useEffect(() => { if (params.get('new') === '1') setShowNew(true); if (params.get('import') === '1') setShowImport(true); setWh(params.get('wh') ?? ''); }, [params]);
   useEffect(() => {
     if (filter !== 'archived' || archived) return;
     fetchItems(s.companyId, 'archived').then((a) => setArchived(s.assignedWarehouseIds.length && s.role !== 'manager' ? a.filter((i) => s.assignedWarehouseIds.includes(i.warehouseId)) : a)).catch(() => setArchived([]));
@@ -85,6 +155,14 @@ export function Inventory() {
       (!wh || i.warehouseId === wh) &&
       (!t || [i.name, i.itemCode, i.sapCode, i.serialNumber, i.assetsTag, i.projectName, i.model, i.internalId].some((v) => v?.toLowerCase().includes(t))));
   }, [items, archived, filter, wh, q]);
+
+  const sorted = useMemo(() => {
+    const a = [...list];
+    if (sort === 'name') a.sort((x, y) => x.name.localeCompare(y.name));
+    if (sort === 'qtyAsc') a.sort((x, y) => x.quantity - y.quantity);
+    if (sort === 'qtyDesc') a.sort((x, y) => y.quantity - x.quantity);
+    return a;
+  }, [list, sort]);
 
   return (
     <>
@@ -123,6 +201,22 @@ export function Inventory() {
         )}
       </div>
 
+      <div className="view-bar">
+        <span className="muted" style={{ fontSize: 13 }}>{L(`${list.length} صنف`, `${list.length} items`)}</span>
+        <span className="grow" />
+        <select className="fchip" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label={L('الترتيب', 'Sort')}>
+          <option value="new">{L('الأحدث', 'Newest')}</option>
+          <option value="name">{L('الاسم', 'Name')}</option>
+          <option value="qtyAsc">{L('الأقل كمية', 'Lowest qty')}</option>
+          <option value="qtyDesc">{L('الأعلى كمية', 'Highest qty')}</option>
+        </select>
+        <div className="seg" role="radiogroup" aria-label={L('طريقة العرض', 'View')}>
+          {VIEWS.map(([k, icon, label]) => (
+            <button key={k} role="radio" aria-checked={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)} title={L(label[0], label[1])} aria-label={L(label[0], label[1])}><Icon name={icon} size={17} /></button>
+          ))}
+        </div>
+      </div>
+
       {loading && !items.length ? (
         <div className="grid">{[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 92 }} />)}</div>
       ) : list.length === 0 ? (
@@ -130,9 +224,7 @@ export function Inventory() {
           text={!items.length && !warehouses.length ? L('ابدأ بإنشاء مكان تخزين ثم أضف الأصناف.', 'Create a storage first, then add items.') : undefined}
           action={!items.length && can(s.role, 'item:create') ? (warehouses.length ? <button className="btn primary" onClick={() => setShowNew(true)}>{L('أضف أول صنف', 'Add first item')}</button> : <Link className="btn primary" to="/storages?new=1">{L('أنشئ مكان تخزين', 'Create storage')}</Link>) : undefined} />
       ) : (
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 330px), 1fr))' }}>
-          {list.slice(0, 300).map((i) => <ItemCard key={i.id} item={i} whName={whName(i.warehouseId)} />)}
-        </div>
+        <ItemsView view={view} items={sorted.slice(0, 300)} whName={whName} groups={view === 'grouped' ? warehouses.filter((w) => sorted.some((i) => i.warehouseId === w.id)) : []} />
       )}
       {list.length > 300 && <p className="muted" style={{ textAlign: 'center', fontSize: 13 }}>{L('استخدم البحث لعرض باقي الأصناف', 'Use search to see the rest')}</p>}
 
