@@ -150,7 +150,7 @@ export function Inventory() {
   const { items, warehouses, whName, loading, reload } = useData();
   const [params, setParams] = useSearchParams();
   const go = useNavigate();
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(params.get('q') ?? '');
   const [filter, setFilter] = useState<Filter>((params.get('f') as Filter) || 'all');
   const [wh, setWh] = useState(params.get('wh') ?? '');
   const [archived, setArchived] = useState<Item[] | null>(null);

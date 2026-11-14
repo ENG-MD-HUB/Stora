@@ -11,7 +11,7 @@ import { Confirm, Crumbs, Empty, Field, Loading, Sheet, StockChip, Stepper, useL
 import { toDate } from '../lib/format';
 
 /** Receiving new stock is the only quantity change made from the item page. */
-function ReceiveSheet({ item, onClose, onDone }: { item: Item; onClose: () => void; onDone: () => void }) {
+export function ReceiveSheet({ item, onClose, onDone }: { item: Item; onClose: () => void; onDone: () => void }) {
   const { L } = usePrefs();
   const toast = useToast();
   const [qty, setQty] = useState(1);
