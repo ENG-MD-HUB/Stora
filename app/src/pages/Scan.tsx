@@ -3,18 +3,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePrefs } from '../lib/prefs';
 import { can } from '../lib/permissions';
+import { findByCode } from '../services/inventory';
 import type { Item } from '../services/types';
+import { onScan } from '../lib/hwScanner';
 import { useCart, useData, useSession } from '../state/app';
 import { Icon } from '../ui/Icon';
 import { useToast } from '../ui/kit';
 
 type Mode = 'release' | 'search';
 
-function match(items: Item[], code: string): Item | undefined {
-  const c = code.trim().toLowerCase();
-  if (!c) return undefined;
-  return items.find((i) => [i.sapCode, i.itemCode, i.serialNumber, i.assetsTag, i.internalId].some((v) => v && v.trim().toLowerCase() === c));
-}
 
 export default function Scan() {
   const s = useSession();
@@ -40,10 +37,16 @@ export default function Scan() {
     if (code === last.current.code && now - last.current.at < 2500) return;
     last.current = { code, at: now };
     navigator.vibrate?.(40);
-    const it = match(itemsRef.current, code);
+    const it = findByCode(itemsRef.current, code);
     setFound(it ?? null);
     setMiss(it ? '' : code);
   };
+
+  const [cams, setCams] = useState<MediaDeviceInfo[]>([]);
+  const [camId, setCamId] = useState<string>(() => { try { return localStorage.getItem('stora.camera') ?? ''; } catch { return ''; } });
+
+  // USB / Bluetooth scanner input on this page
+  useEffect(() => onScan((code) => handle(code)), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let stop = false;
@@ -52,14 +55,20 @@ export default function Scan() {
         const { BrowserMultiFormatReader } = await import('@zxing/browser');
         if (stop || !video.current) return;
         const reader = new BrowserMultiFormatReader();
-        controls.current = await reader.decodeFromConstraints({ video: { facingMode: 'environment' } }, video.current, (res) => { if (res) handle(res.getText()); });
+        controls.current?.stop();
+        const constraints: MediaStreamConstraints = { video: camId ? { deviceId: { exact: camId } } : { facingMode: 'environment' } };
+        controls.current = await reader.decodeFromConstraints(constraints, video.current, (res) => { if (res) handle(res.getText()); });
+        setErr('');
+        const list = await BrowserMultiFormatReader.listVideoInputDevices();
+        if (!stop) setCams(list);
       } catch (e) {
         const name = (e as Error).name;
-        setErr(name === 'NotAllowedError' ? L('اسمح للتطبيق باستخدام الكاميرا من إعدادات المتصفح', 'Allow camera access in your browser settings') : L('لا تتوفر كاميرا — اكتب الرمز يدوياً', 'No camera available — type the code instead'));
+        if (camId && name === 'OverconstrainedError') { setCamId(''); return; }
+        setErr(name === 'NotAllowedError' ? L('اسمح للتطبيق باستخدام الكاميرا من إعدادات المتصفح', 'Allow camera access in your browser settings') : L('لا تتوفر كاميرا — اكتب الرمز أو استخدم قارئ باركود', 'No camera — type the code or use a barcode scanner'));
       }
     })();
     return () => { stop = true; controls.current?.stop(); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [camId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function addFound() {
     if (!found) return;
@@ -109,6 +118,13 @@ export default function Scan() {
         ) : (
           <p className="muted" style={{ margin: 0, textAlign: 'center', fontSize: 14 }}>{err || L('وجّه الكاميرا نحو الباركود أو رمز QR', 'Point the camera at a barcode or QR code')}</p>
         )}
+        {cams.length > 1 && (
+          <select className="input" value={camId} onChange={(e) => { setCamId(e.target.value); try { localStorage.setItem('stora.camera', e.target.value); } catch { /* ignore */ } }} aria-label={L('الكاميرا', 'Camera')}>
+            <option value="">{L('الكاميرا الافتراضية', 'Default camera')}</option>
+            {cams.map((c, i) => <option key={c.deviceId} value={c.deviceId}>{c.label || `${L('كاميرا', 'Camera')} ${i + 1}`}</option>)}
+          </select>
+        )}
+        <p className="muted" style={{ margin: 0, fontSize: 12, textAlign: 'center' }}>{L('يعمل أيضاً مع قارئ الباركود USB أو بلوتوث — امسح مباشرة', 'USB / Bluetooth barcode scanners work too — just scan')}</p>
         <form onSubmit={(e) => { e.preventDefault(); if (manual.trim()) { last.current = { code: '', at: 0 }; handle(manual.trim()); setManual(''); } }} style={{ display: 'flex', gap: 8 }}>
           <input className="input mono" value={manual} onChange={(e) => setManual(e.target.value)} placeholder={L('أو اكتب الرمز / SAP / الرقم التسلسلي', 'or type code / SAP / serial')} aria-label={L('رمز يدوي', 'Manual code')} />
           <button className="btn">{L('بحث', 'Find')}</button>

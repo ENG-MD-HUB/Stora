@@ -187,3 +187,10 @@ export async function deleteItem(id: string) {
 export type StockLevel = 'ok' | 'low' | 'out';
 export const stockLevel = (it: Pick<Item, 'quantity' | 'minThreshold'>): StockLevel =>
   it.quantity <= 0 ? 'out' : it.quantity <= (it.minThreshold ?? 0) ? 'low' : 'ok';
+
+/** Find an item by a scanned/typed code (SAP, stock no., serial, asset tag or internal id). */
+export function findByCode(items: Item[], code: string): Item | undefined {
+  const c = code.trim().toLowerCase();
+  if (!c) return undefined;
+  return items.find((i) => [i.sapCode, i.itemCode, i.serialNumber, i.assetsTag, i.internalId].some((v) => v && v.trim().toLowerCase() === c));
+}

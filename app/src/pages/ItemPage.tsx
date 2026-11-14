@@ -7,7 +7,7 @@ import { changeStock, deleteItem, fetchItem, fetchMovements, setItemStatus, stoc
 import type { Item, Movement } from '../services/types';
 import { useCart, useData, useSession } from '../state/app';
 import { Icon } from '../ui/Icon';
-import { Confirm, Empty, Field, Loading, Sheet, StockChip, Stepper, useLoad, useToast } from '../ui/kit';
+import { Confirm, Crumbs, Empty, Field, Loading, Sheet, StockChip, Stepper, useLoad, useToast } from '../ui/kit';
 import { ItemForm } from './ItemForm';
 
 type Action = 'withdraw' | 'add' | 'return';
@@ -100,6 +100,7 @@ export function ItemPage() {
         {can(s.role, 'item:edit') && <button className="icon-btn" onClick={() => setEdit(true)} aria-label={L('تعديل', 'Edit')}><Icon name="edit" size={19} /></button>}
       </div>
 
+      <Crumbs items={[{ label: L('المخزون', 'Inventory'), to: '/inventory' }, { label: whName(it.warehouseId), to: `/inventory?wh=${it.warehouseId}` }, { label: it.name }]} />
       <div>
         {it.status === 'archived' ? <span className="chip plain">{L('مؤرشف', 'Archived')}</span> : <StockChip level={lvl} />}
         <h1 className="h1" style={{ marginTop: 8 }}>{it.name}</h1>

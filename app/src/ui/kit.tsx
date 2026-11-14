@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { usePrefs } from '../lib/prefs';
 import type { StockLevel } from '../services/inventory';
 import { Icon } from './Icon';
@@ -125,4 +126,18 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, n]);
   return { data, loading, error, reload: () => setN((x) => x + 1), setData };
+}
+
+/** Where am I? — small path shown at the top of detail pages. */
+export function Crumbs({ items }: { items: { label: string; to?: string }[] }) {
+  return (
+    <nav aria-label="breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 13 }}>
+      {items.map((c, i) => (
+        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {i > 0 && <span className="muted" aria-hidden="true">›</span>}
+          {c.to ? <Link to={c.to} style={{ fontWeight: 600 }}>{c.label}</Link> : <span className="muted" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>}
+        </span>
+      ))}
+    </nav>
+  );
 }

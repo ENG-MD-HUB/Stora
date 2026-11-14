@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { hasFeature } from '../config/app';
 import { usePrefs } from '../lib/prefs';
 import { can, roleLabel } from '../lib/permissions';
-import { useAuth, useCart, useSession } from '../state/app';
+import { onScan, useHardwareScanner } from '../lib/hwScanner';
+import { findByCode } from '../services/inventory';
+import { useAuth, useCart, useData, useSession } from '../state/app';
+import { SiteFooter } from './Brand';
+import { useToast } from './kit';
 import { Icon, Logo } from './Icon';
 
 export function useNav() {
@@ -47,6 +51,25 @@ export function Layout() {
 
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
 
+  // USB / Bluetooth barcode scanners work on every page.
+  useHardwareScanner();
+  const { items } = useData();
+  const toast = useToast();
+  const ctx = useRef({ items, path: loc.pathname, cart });
+  ctx.current = { items, path: loc.pathname, cart };
+  useEffect(() => onScan((code) => {
+    const { items: list, path, cart: c } = ctx.current;
+    if (path.startsWith('/scan')) return; // the scan page handles it
+    const it = findByCode(list, code);
+    if (!it) { toast(L(`لا يوجد صنف بالرمز ${code}`, `No item with code ${code}`), 'error'); return; }
+    if (path.startsWith('/release') && can(s.role, 'release:create')) {
+      const r = c.add(it);
+      toast(r === 'mixed' ? L('سند الصرف يقبل مكان تخزين واحد فقط', 'One storage per release') : r === 'exists' ? L('موجود في السند', 'Already in release') : L(`أضيف: ${it.name}`, `Added: ${it.name}`), r === 'mixed' ? 'error' : 'ok');
+      return;
+    }
+    go(`/item/${it.id}`);
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const tab = (to: string, icon: string, label: string) => {
     const on = to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(to);
     return <NavLink to={to} className={`tab ${on ? 'on' : ''}`}><Icon name={icon} size={22} />{label}</NavLink>;
@@ -82,7 +105,7 @@ export function Layout() {
           {!sup && can(s.role, 'release:create') && <button className="btn primary" onClick={() => go('/release')}><Icon name="bag" size={18} />{L('سند صرف', 'Release')}</button>}
         </header>
 
-        <main className="page"><Outlet /></main>
+        <main className="page"><Outlet /><SiteFooter /></main>
       </div>
 
       {showCartBar && (

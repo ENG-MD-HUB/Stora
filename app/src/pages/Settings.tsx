@@ -40,8 +40,8 @@ export default function Settings() {
               <span className="chip info">{roleLabel(s.role, L)}</span>
             </div>
             <p className="muted" style={{ margin: 0, fontSize: 13 }}>{company}</p>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-              <Field label={L('الاسم الظاهر', 'Display name')}><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+              <Field label={L('الاسم الظاهر', 'Display name')}><input className="input" dir="auto" value={name} onChange={(e) => setName(e.target.value)} /></Field>
               <button className="btn" disabled={name.trim().length < 2 || name === s.displayName} onClick={async () => { await updateMyName(s.uid, name); setSession({ ...s, displayName: name.trim() }); toast(L('تم تحديث الاسم', 'Name updated')); }}>{L('حفظ', 'Save')}</button>
             </div>
           </Section>
@@ -60,18 +60,6 @@ export default function Settings() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {canSig && sig && (
-            <Section title={L('معتمدو نموذج الصرف المطبوع', 'Release form signatories')}>
-              {sig.map((g, i) => (
-                <div key={i} className="grid g2" style={{ paddingBottom: 10, borderBottom: i < sig.length - 1 ? '1px solid var(--line-2)' : 0 }}>
-                  <Field label={g.role}><input className="input" value={g.title} onChange={(e) => setSig(sig.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} /></Field>
-                  <Field label={L('الاسم', 'Name')}><input className="input" value={g.name} onChange={(e) => setSig(sig.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} /></Field>
-                </div>
-              ))}
-              <button className="btn primary" onClick={async () => { try { await saveSignatories(s.companyId, sig); toast(L('تم الحفظ', 'Saved')); } catch { toast(L('تعذّر الحفظ', 'Could not save'), 'error'); } }}>{L('حفظ المعتمدين', 'Save signatories')}</button>
-            </Section>
-          )}
-
           <Section title={L('حول التطبيق', 'About')}>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: 14 }}>
               <span className="muted">{L('الإصدار', 'Version')}</span><span className="mono ltr" style={{ textAlign: 'start' }}>{APP.version}</span>
@@ -83,6 +71,24 @@ export default function Settings() {
           </Section>
         </div>
       </div>
+      {canSig && sig && (
+        <Section title={L('معتمدو نموذج الصرف المطبوع', 'Release form signatories')}>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>{L('تظهر هذه البيانات في خانات التوقيع أسفل سند الصرف المطبوع.', 'Shown in the signature boxes of the printed release form.')}</p>
+          <div className="grid g2-d" style={{ gap: 12 }}>
+            {sig.map((g, i) => (
+              <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--raised)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="chip info mono">{i + 1}</span>
+                  <input className="input" dir="auto" style={{ height: 40, fontWeight: 700, fontSize: 14 }} value={g.role} onChange={(e) => setSig(sig.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))} aria-label={L('صفة التوقيع', 'Signature role')} />
+                </div>
+                <Field label={L('المسمى الوظيفي', 'Job title')}><input className="input" dir="auto" value={g.title} onChange={(e) => setSig(sig.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} /></Field>
+                <Field label={L('الاسم', 'Name')}><input className="input" dir="auto" value={g.name} onChange={(e) => setSig(sig.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} /></Field>
+              </div>
+            ))}
+          </div>
+          <button className="btn primary" style={{ alignSelf: 'flex-start', minWidth: 200 }} onClick={async () => { try { await saveSignatories(s.companyId, sig); toast(L('تم الحفظ', 'Saved')); } catch { toast(L('تعذّر الحفظ', 'Could not save'), 'error'); } }}>{L('حفظ المعتمدين', 'Save signatories')}</button>
+        </Section>
+      )}
     </>
   );
 }
