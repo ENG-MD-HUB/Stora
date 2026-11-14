@@ -93,64 +93,64 @@ export function ItemPage() {
     [L('المعرّف', 'Internal ID'), it.internalId],
   ].filter(([, v]) => v);
 
+  const canStock = it.status === 'active' && can(s.role, 'item:withdraw');
+  const canCart = it.status === 'active' && it.quantity > 0 && can(s.role, 'release:create');
+  const inCart = cart.has(it.id);
+  const pct = Math.min(100, (it.quantity / Math.max(it.minThreshold * 3, it.quantity, 1)) * 100);
+
   return (
     <>
-      <div className="head no-print">
-        <button className="icon-btn" onClick={() => nav(-1)} aria-label={L('رجوع', 'Back')}><Icon name={lang === 'ar' ? 'back' : 'fwd'} /></button>
-        {can(s.role, 'item:edit') && <button className="icon-btn" onClick={() => setEdit(true)} aria-label={L('تعديل', 'Edit')}><Icon name="edit" size={19} /></button>}
+      <div className="page-top no-print">
+        <button className="btn sm ghost" onClick={() => nav(-1)}><Icon name={lang === 'ar' ? 'back' : 'fwd'} size={16} />{L('رجوع', 'Back')}</button>
+        <Crumbs items={[{ label: L('المخزون', 'Inventory'), to: '/inventory' }, { label: whName(it.warehouseId), to: `/inventory?wh=${it.warehouseId}` }, { label: it.name }]} />
       </div>
 
-      <Crumbs items={[{ label: L('المخزون', 'Inventory'), to: '/inventory' }, { label: whName(it.warehouseId), to: `/inventory?wh=${it.warehouseId}` }, { label: it.name }]} />
       <div>
-        {it.status === 'archived' ? <span className="chip plain">{L('مؤرشف', 'Archived')}</span> : <StockChip level={lvl} />}
-        <h1 className="h1" style={{ marginTop: 8 }}>{it.name}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h1 className="h1">{it.name}</h1>
+          {it.status === 'archived' ? <span className="chip plain">{L('مؤرشف', 'Archived')}</span> : <StockChip level={lvl} />}
+        </div>
         <p className="muted mono" style={{ margin: '4px 0 0', fontSize: 13 }}>{[it.sapCode || it.itemCode, whName(it.warehouseId)].filter(Boolean).join(' · ')}</p>
       </div>
 
-      <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <div><p className="muted" style={{ margin: 0, fontSize: 13 }}>{L('الكمية الحالية', 'Current quantity')}</p><b className="mono" style={{ fontSize: 44, lineHeight: 1.1, color: lvl === 'ok' ? 'var(--text)' : `var(--${lvl})` }}>{it.quantity}</b> <span className="muted">{it.unit}</span></div>
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>{L('الحد الأدنى', 'Minimum')} <b className="mono" style={{ color: 'var(--text)' }}>{it.minThreshold}</b></p>
-        </div>
-        {it.status === 'active' && can(s.role, 'item:withdraw') && (
-          <div className="grid g3">
-            <button className="btn primary" disabled={it.quantity <= 0} onClick={() => setAction('withdraw')}>{L('صرف', 'Withdraw')}</button>
-            <button className="btn" onClick={() => setAction('add')}>{L('إضافة', 'Add')}</button>
-            <button className="btn" onClick={() => setAction('return')}>{L('إرجاع', 'Return')}</button>
-          </div>
-        )}
-        {it.status === 'active' && it.quantity > 0 && can(s.role, 'release:create') && (
-          <button className="btn ghost sm" onClick={() => { const r = cart.has(it.id) ? (cart.remove(it.id), 'removed') : cart.add(it); if (r === 'mixed') toast(L('سند الصرف يقبل مكان تخزين واحد فقط', 'One storage per release'), 'error'); }}>
-            <Icon name="bag" size={17} />{cart.has(it.id) ? L('إزالة من سند الصرف', 'Remove from release') : L('إضافة لسند الصرف', 'Add to release')}
+      <div className="toolbar no-print">
+        {canStock && <>
+          <button className="btn sm primary" disabled={it.quantity <= 0} onClick={() => setAction('withdraw')}><Icon name="down" size={16} />{L('صرف كمية', 'Withdraw')}</button>
+          <button className="btn sm" onClick={() => setAction('add')}><Icon name="up" size={16} />{L('إضافة كمية', 'Add stock')}</button>
+          <button className="btn sm" onClick={() => setAction('return')}><Icon name="restore" size={16} />{L('إرجاع للمخزون', 'Return')}</button>
+        </>}
+        {canCart && (
+          <button className={`btn sm ${inCart ? 'selected' : ''}`} onClick={() => { const r = inCart ? (cart.remove(it.id), 'removed') : cart.add(it); if (r === 'mixed') toast(L('سند الصرف يقبل مكان تخزين واحد فقط', 'One storage per release'), 'error'); }}>
+            <Icon name={inCart ? 'check' : 'bag'} size={16} />{inCart ? L('في سند الصرف', 'In release') : L('إضافة لسند الصرف', 'Add to release')}
           </button>
         )}
+        <span className="grow" />
+        {can(s.role, 'item:edit') && <button className="btn sm" onClick={() => setEdit(true)}><Icon name="edit" size={16} />{L('تعديل البيانات', 'Edit details')}</button>}
+        {can(s.role, 'item:archive') && (it.status === 'active'
+          ? <button className="btn sm" onClick={() => setConfirm('archive')}><Icon name="archive" size={16} />{L('أرشفة', 'Archive')}</button>
+          : <button className="btn sm" onClick={async () => { await setItemStatus(it.id, 'active'); toast(L('تمت الاستعادة', 'Restored')); refresh(); }}><Icon name="restore" size={16} />{L('استعادة', 'Restore')}</button>)}
+        {can(s.role, 'item:delete') && <button className="btn sm danger" onClick={() => setConfirm('delete')}><Icon name="trash" size={16} />{L('حذف', 'Delete')}</button>}
+      </div>
+
+      <div className="card qty-strip">
+        <div><span className="muted">{L('الكمية الحالية', 'Current quantity')}</span><b className="mono" style={{ color: lvl === 'ok' ? 'var(--text)' : `var(--${lvl})` }}>{it.quantity} <small>{it.unit}</small></b></div>
+        <div><span className="muted">{L('الحد الأدنى', 'Minimum')}</span><b className="mono">{it.minThreshold}</b></div>
+        <div className="grow" style={{ minWidth: 160 }}><span className="muted">{L('المستوى', 'Level')}</span><div className="bar" style={{ height: 8, marginTop: 10 }}><i style={{ width: `${it.quantity <= 0 ? 0 : Math.max(6, pct)}%`, background: `var(--${lvl})` }} /></div></div>
       </div>
 
       <div className="split">
-        <div className="grid g2" style={{ alignContent: 'start' }}>
-          {info.map(([k, v]) => (
-            <div key={k} className="card" style={{ padding: '12px 14px' }}>
-              <p className="muted" style={{ margin: 0, fontSize: 12 }}>{k}</p>
-              <p style={{ margin: '2px 0 0', fontWeight: 600, fontSize: 14, overflowWrap: 'anywhere' }}>{v}</p>
-            </div>
-          ))}
-          {it.notes && <div className="card" style={{ padding: '12px 14px', gridColumn: '1 / -1' }}><p className="muted" style={{ margin: 0, fontSize: 12 }}>{L('ملاحظات', 'Notes')}</p><p style={{ margin: '2px 0 0', fontSize: 14 }}>{it.notes}</p></div>}
-        </div>
-
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <section className="card card-pad">
+          <h2 className="section-title" style={{ marginBottom: 8 }}>{L('بيانات الصنف', 'Item details')}</h2>
+          <dl className="dl">
+            {info.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+            {it.notes && <div style={{ gridColumn: '1 / -1' }}><dt>{L('ملاحظات', 'Notes')}</dt><dd>{it.notes}</dd></div>}
+          </dl>
+        </section>
+        <section className="card card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <h2 className="section-title">{L('سجل الحركة', 'Movement history')}</h2>
           {(moves.data ?? []).length === 0 ? <p className="muted" style={{ margin: 0 }}>{moves.loading ? L('جارٍ التحميل…', 'Loading…') : L('لا توجد حركات', 'No movements')}</p> : (moves.data ?? []).map((m) => <MovementRow key={m.id} m={m} />)}
         </section>
       </div>
-
-      {(can(s.role, 'item:archive') || can(s.role, 'item:delete')) && (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }} className="no-print">
-          {can(s.role, 'item:archive') && (it.status === 'active'
-            ? <button className="btn sm" onClick={() => setConfirm('archive')}><Icon name="archive" size={16} />{L('أرشفة', 'Archive')}</button>
-            : <button className="btn sm" onClick={async () => { await setItemStatus(it.id, 'active'); toast(L('تمت الاستعادة', 'Restored')); refresh(); }}><Icon name="restore" size={16} />{L('استعادة', 'Restore')}</button>)}
-          {can(s.role, 'item:delete') && <button className="btn sm danger" onClick={() => setConfirm('delete')}><Icon name="trash" size={16} />{L('حذف نهائي', 'Delete')}</button>}
-        </div>
-      )}
 
       {action && <StockSheet item={it} kind={action} onClose={() => setAction(null)} onDone={() => { setAction(null); refresh(); }} />}
       {edit && <ItemForm item={it} onClose={() => setEdit(false)} onSaved={() => { setEdit(false); refresh(); }} />}

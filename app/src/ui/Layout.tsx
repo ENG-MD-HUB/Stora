@@ -97,12 +97,6 @@ export function Layout() {
       </aside>
 
       <div className="content">
-        <header className="topbar">
-          <button className="search" style={{ flex: 1, maxWidth: 520, cursor: 'text', color: 'var(--muted)' }} onClick={() => go('/inventory?focus=1')}>
-            <Icon name="search" size={18} />{L('ابحث عن صنف أو رمز SAP', 'Search items or SAP code')}
-          </button>
-          <span className="grow" />
-        </header>
 
         <main className="page"><Outlet /></main>
       </div>
@@ -154,7 +148,6 @@ function Fab({ raised }: { raised: boolean }) {
     can(s.role, 'release:create') && { icon: 'bag', label: L('سند صرف جديد', 'New release'), to: '/release' },
     can(s.role, 'item:create') && { icon: 'box', label: L('إضافة صنف', 'Add item'), to: '/inventory?new=1' },
     hasFeature('barcodeScanner') && { icon: 'scan', label: L('مسح باركود', 'Scan barcode'), to: '/scan' },
-    can(s.role, 'item:create') && { icon: 'up', label: L('استيراد Excel', 'Import Excel'), to: '/inventory?import=1' },
   ].filter(Boolean) as { icon: string; label: string; to: string }[];
   if (!actions.length) return null;
   return (
