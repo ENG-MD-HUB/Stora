@@ -1,65 +1,156 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fmtDate, fmtDateTime } from '../lib/format';
 import { usePrefs } from '../lib/prefs';
 import { can } from '../lib/permissions';
-import { changeStock, deleteItem, fetchItem, fetchMovements, setItemStatus, stockLevel } from '../services/inventory';
+import { changeStock, deleteItem, fetchItem, fetchMovements, setItemStatus, stockLevel, updateItem, type ItemInput } from '../services/inventory';
 import type { Item, Movement } from '../services/types';
 import { useCart, useData, useSession } from '../state/app';
 import { Icon } from '../ui/Icon';
 import { Confirm, Crumbs, Empty, Field, Loading, Sheet, StockChip, Stepper, useLoad, useToast } from '../ui/kit';
-import { ItemForm } from './ItemForm';
+import { toDate } from '../lib/format';
 
-type Action = 'withdraw' | 'add' | 'return';
-
-function StockSheet({ item, kind, onClose, onDone }: { item: Item; kind: Action; onClose: () => void; onDone: () => void }) {
+/** Receiving new stock is the only quantity change made from the item page. */
+function ReceiveSheet({ item, onClose, onDone }: { item: Item; onClose: () => void; onDone: () => void }) {
   const { L } = usePrefs();
   const toast = useToast();
   const [qty, setQty] = useState(1);
-  const [who, setWho] = useState('');
-  const [where, setWhere] = useState('');
-  const [why, setWhy] = useState('');
+  const [ref, setRef] = useState('');
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
-  const titles = { withdraw: L('صرف من المخزون', 'Withdraw'), add: L('إضافة كمية', 'Add stock'), return: L('إرجاع للمخزون', 'Return to stock') };
-  const max = kind === 'withdraw' ? item.quantity : 100000;
-
-  async function go() {
-    setBusy(true);
-    try {
-      await changeStock(kind, { itemId: item.id, quantity: qty, requesterName: who, destination: where, reason: why });
-      toast(L('تم التسجيل', 'Saved'));
-      onDone();
-    } catch (e) {
-      toast((e as Error).message === 'insufficientStock' ? L('الكمية المتوفرة غير كافية', 'Not enough stock') : L('تعذّر الحفظ', 'Could not save'), 'error');
-    } finally { setBusy(false); }
-  }
-
   return (
-    <Sheet title={titles[kind]} onClose={onClose} footer={<><button className="btn primary" style={{ flex: 1 }} disabled={busy || qty < 1 || qty > max} onClick={go}>{busy ? <span className="spinner" /> : L('تأكيد', 'Confirm')}</button><button className="btn" onClick={onClose}>{L('إلغاء', 'Cancel')}</button></>}>
-      <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div className="grow"><p className="title">{item.name}</p><p className="sub">{L('المتوفر', 'Available')} <span className="mono">{item.quantity}</span> {item.unit}</p></div>
-        <Stepper value={qty} max={kind === 'withdraw' ? Math.max(1, max) : 99999} onChange={setQty} />
+    <Sheet title={L('استلام كمية', 'Receive stock')} onClose={onClose}>
+      <div className="qty-pick">
+        <p className="muted"><b style={{ color: 'var(--text)' }}>{item.name}</b> · {L('الحالي', 'now')} <span className="mono">{item.quantity}</span> {item.unit}</p>
+        <Stepper value={qty} max={100000} onChange={setQty} />
+        <Field label={L('مرجع الاستلام (D/N أو P/O)', 'Reference (D/N or P/O)')} hint={L('اختياري', 'optional')}><input className="input mono" value={ref} onChange={(e) => setRef(e.target.value)} /></Field>
+        <Field label={L('ملاحظة', 'Note')} hint={L('اختياري', 'optional')}><input className="input" value={note} onChange={(e) => setNote(e.target.value)} /></Field>
+        <button className="btn primary block" disabled={busy} onClick={async () => {
+          setBusy(true);
+          try { await changeStock('add', { itemId: item.id, quantity: qty, reason: ref.trim(), notes: note.trim() }); toast(L(`استُلم ${qty}`, `${qty} received`)); onDone(); }
+          catch { toast(L('تعذّر الحفظ', 'Could not save'), 'error'); setBusy(false); }
+        }}>{busy ? <span className="spinner" /> : L(`استلام ${qty}`, `Receive ${qty}`)}</button>
       </div>
-      {kind !== 'add' && <Field label={kind === 'withdraw' ? L('المستلم', 'Received by') : L('أرجعه', 'Returned by')}><input className="input" value={who} onChange={(e) => setWho(e.target.value)} /></Field>}
-      {kind === 'withdraw' && <Field label={L('الوجهة', 'Destination')}><input className="input" value={where} onChange={(e) => setWhere(e.target.value)} /></Field>}
-      <Field label={L('السبب / ملاحظة', 'Reason / note')} hint={L('اختياري', 'optional')}><input className="input" value={why} onChange={(e) => setWhy(e.target.value)} /></Field>
     </Sheet>
   );
 }
 
+const isReversal = (m: Movement) => m.type === 'add' && (!!m.releaseId || /^Reversal of release/.test(m.notes ?? ''));
+const releaseRef = (m: Movement) => m.releaseNumber || (m.reason?.match(/R\d{2}-\d+/)?.[0] ?? '');
+
 function MovementRow({ m }: { m: Movement }) {
   const { L, lang } = usePrefs();
   const diff = m.quantityAfter - m.quantityBefore;
-  const label = { withdraw: L('صرف', 'Withdraw'), add: L('إضافة', 'Add'), edit: L('تعديل الكمية', 'Qty edit'), return: L('إرجاع', 'Return') }[m.type] ?? m.type;
-  const extra = [m.requesterName, m.destination, m.reason].filter(Boolean).join(' · ');
+  const ref = releaseRef(m);
+  const label = m.type === 'withdraw' ? L('صُرف', 'Released')
+    : m.type === 'return' ? L('أُرجع من', 'Returned from')
+    : isReversal(m) ? L('أُلغي السند', 'Release cancelled')
+    : m.type === 'edit' ? L('تعديل الكمية', 'Quantity edit')
+    : L('استلام', 'Received');
+  const who = [m.requesterName, m.destination, m.type === 'add' && !isReversal(m) ? m.reason || m.performedByName : '', m.type !== 'add' ? m.reason : ''].filter(Boolean).join(' · ') || m.performedByName;
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-      <span className={`ico ${diff < 0 ? 'low' : 'ok'}`} style={{ width: 32, height: 32, borderRadius: 10 }}><Icon name={diff < 0 ? 'down' : 'up'} size={15} stroke={2.2} /></span>
-      <div className="grow">
-        <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{label} {Math.abs(diff)}</p>
-        <p className="muted" style={{ margin: '2px 0 0', fontSize: 12.5 }}>{[m.performedByName, extra, fmtDateTime(m.createdAt, lang)].filter(Boolean).join(' · ')}</p>
+    <div className="mv">
+      <span className={`mv-ico ${diff < 0 ? 'out' : 'in'}`}><Icon name={diff < 0 ? 'down' : 'up'} size={13} stroke={2.4} /></span>
+      <div className="grow" style={{ minWidth: 0 }}>
+        <p className="mv-t">{label} {ref && (m.releaseId ? <Link to={`/releases/${m.releaseId}`} className="mono">{ref}</Link> : <span className="mono">{ref}</span>)}</p>
+        <p className="mv-s">{who}</p>
       </div>
-      <span className="mono ltr muted" style={{ fontSize: 13 }}>{m.quantityBefore} → {m.quantityAfter}</span>
+      <b className={`mono mv-q ${diff < 0 ? 'out' : 'in'}`}>{diff > 0 ? '+' : '−'}{Math.abs(diff)}</b>
+      <span className="mv-d" title={fmtDateTime(m.createdAt, lang)}>{fmtDate(m.createdAt, lang)}</span>
+    </div>
+  );
+}
+
+/** Totals for the item: received − released = remaining. */
+function stats(it: Item, moves: Movement[]) {
+  let out = 0, back = 0;
+  const rel = new Set<string>();
+  for (const m of moves) {
+    const d = m.quantityAfter - m.quantityBefore;
+    if (m.type === 'withdraw') { out += -d; if (m.releaseId) rel.add(m.releaseId); }
+    else if (m.type === 'return' || isReversal(m)) back += d;
+  }
+  const released = Math.max(0, out - back);
+  return { released, returned: back, releases: rel.size, remaining: it.quantity, received: it.quantity + released };
+}
+
+const EXTRA: [keyof Item, string, string, boolean?][] = [
+  ['projectName', 'المشروع', 'Project'], ['owner', 'مالك الأصول', 'Assets owner'], ['unit', 'الوحدة', 'Unit'], ['minThreshold', 'الحد الأدنى', 'Minimum'],
+  ['itemCode', 'رقم المخزون', 'Stock no.', true], ['sapCode', 'SAP', 'SAP', true], ['model', 'الموديل', 'Model'], ['serialNumber', 'الرقم التسلسلي', 'Serial', true],
+  ['assetsTag', 'رقم الأصل', 'Asset tag', true], ['poNumber', 'أمر الشراء', 'PO', true], ['dnNumber', 'سند التسليم', 'DN', true], ['modelCategory', 'فئة الموديل', 'Model category'],
+  ['employeeNumber', 'الشركة', 'Company'], ['requestType', 'نوع الطلب', 'Request type'],
+];
+
+/** Item details switched into editable fields, in place. Quantities are not edited here. */
+function DetailsEdit({ it, onCancel, onSaved }: { it: Item; onCancel: () => void; onSaved: () => void }) {
+  const { L } = usePrefs();
+  const toast = useToast();
+  const exp = toDate(it.expiryDate);
+  const [f, setF] = useState<Record<string, string>>(() => ({
+    name: it.name, notes: it.notes ?? '', expiryDate: exp ? exp.toISOString().slice(0, 10) : '',
+    ...Object.fromEntries(EXTRA.map(([k]) => [k, String(it[k] ?? '')])),
+  }));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<Record<string, boolean>>({});
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
+
+  async function save() {
+    const e: Record<string, boolean> = { name: f.name.trim().length < 2, projectName: !f.projectName.trim(), owner: !f.owner.trim(), unit: !f.unit.trim() };
+    setErr(e);
+    if (Object.values(e).some(Boolean)) return;
+    setBusy(true);
+    try {
+      await updateItem(it.id, { ...f, minThreshold: Number(f.minThreshold) || 0 } as unknown as Partial<ItemInput>);
+      toast(L('تم حفظ التعديلات', 'Changes saved'));
+      onSaved();
+    } catch { toast(L('تعذّر الحفظ', 'Could not save'), 'error'); setBusy(false); }
+  }
+
+  return (
+    <section className="card card-pad editing">
+      <div className="card-head">
+        <h2 className="section-title">{L('تعديل بيانات الصنف', 'Edit item details')}</h2>
+        <span className="grow" />
+        <button className="btn sm ghost" onClick={onCancel}>{L('إلغاء', 'Cancel')}</button>
+        <button className="btn sm primary" disabled={busy} onClick={save}>{busy ? <span className="spinner" /> : <><Icon name="check" size={15} stroke={2.4} />{L('حفظ', 'Save')}</>}</button>
+      </div>
+      <div className="edit-grid">
+        <label className="field span2"><span>{L('اسم الصنف', 'Item name')}</span><input className={`input ${err.name ? 'err' : ''}`} value={f.name} onChange={set('name')} /></label>
+        {EXTRA.map(([k, ar, en, mono]) => (
+          <label key={k} className="field"><span>{L(ar, en)}</span>
+            <input className={`input ${err[k] ? 'err' : ''} ${mono ? 'mono' : ''}`} inputMode={k === 'minThreshold' ? 'numeric' : undefined} value={f[k]} onChange={set(k)} /></label>
+        ))}
+        <label className="field"><span>{L('تاريخ الانتهاء', 'Expiry')}</span><input className="input" type="date" value={f.expiryDate} onChange={set('expiryDate')} /></label>
+        <label className="field span-all"><span>{L('ملاحظات', 'Notes')}</span><textarea className="input" rows={2} value={f.notes} onChange={set('notes')} /></label>
+      </div>
+      <p className="muted" style={{ margin: 0, fontSize: 12 }}>{L('الكميات تتغير فقط عبر "استلام كمية" وسندات الصرف.', 'Quantities change only through "Receive stock" and releases.')}</p>
+    </section>
+  );
+}
+
+function MoreMenu({ it, onArchive, onRestore, onDelete }: { it: Item; onArchive: () => void; onRestore: () => void; onDelete: () => void }) {
+  const s = useSession();
+  const { L } = usePrefs();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [open]);
+  const canArc = can(s.role, 'item:archive'), canDel = can(s.role, 'item:delete');
+  if (!canArc && !canDel) return null;
+  return (
+    <div className="menu-wrap">
+      <button className="btn sm icon-only" aria-label={L('المزيد', 'More')} aria-expanded={open} onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}><Icon name="more" size={18} stroke={3} /></button>
+      {open && (
+        <div className="menu" role="menu">
+          {canArc && (it.status === 'active'
+            ? <button role="menuitem" onClick={onArchive}><Icon name="archive" size={16} />{L('أرشفة', 'Archive')}</button>
+            : <button role="menuitem" onClick={onRestore}><Icon name="restore" size={16} />{L('استعادة', 'Restore')}</button>)}
+          {canDel && <button role="menuitem" className="danger" onClick={onDelete}><Icon name="trash" size={16} />{L('حذف نهائي', 'Delete')}</button>}
+        </div>
+      )}
     </div>
   );
 }
@@ -75,7 +166,7 @@ export function ItemPage() {
   const cached = items.find((i) => i.id === id) ?? null;
   const item = useLoad(() => fetchItem(id).catch(() => null), [id]);
   const moves = useLoad(() => fetchMovements(id, s.companyId), [id, s.companyId]);
-  const [action, setAction] = useState<Action | null>(null);
+  const [receive, setReceive] = useState(false);
   const [edit, setEdit] = useState(false);
   const [confirm, setConfirm] = useState<'archive' | 'delete' | null>(null);
 
@@ -85,17 +176,19 @@ export function ItemPage() {
   const lvl = stockLevel(it);
   const refresh = () => { item.reload(); moves.reload(); reload(); };
   const info = [
-    [L('المشروع', 'Project'), it.projectName], [L('مالك الأصول', 'Assets owner'), it.owner], [L('مكان التخزين', 'Storage'), whName(it.warehouseId)],
+    [L('مكان التخزين', 'Storage'), whName(it.warehouseId)], [L('المشروع', 'Project'), it.projectName], [L('مالك الأصول', 'Assets owner'), it.owner],
     [L('رقم المخزون', 'Stock no.'), it.itemCode], ['SAP', it.sapCode], [L('الموديل', 'Model'), it.model], [L('الرقم التسلسلي', 'Serial'), it.serialNumber],
     [L('رقم الأصل', 'Asset tag'), it.assetsTag], [L('أمر الشراء', 'PO'), it.poNumber], [L('سند التسليم', 'DN'), it.dnNumber],
     [L('تاريخ الإدخال', 'Entry date'), fmtDate(it.entryDate ?? it.createdAt, lang)], [L('تاريخ الانتهاء', 'Expiry'), it.expiryDate ? fmtDate(it.expiryDate, lang) : ''],
     [L('المعرّف', 'Internal ID'), it.internalId],
   ].filter(([, v]) => v);
 
-  const canStock = it.status === 'active' && can(s.role, 'item:withdraw');
-  const canCart = it.status === 'active' && it.quantity > 0 && can(s.role, 'release:create');
-  const inCart = cart.has(it.id);
-  const pct = Math.min(100, (it.quantity / Math.max(it.minThreshold * 3, it.quantity, 1)) * 100);
+  const st = stats(it, moves.data ?? []);
+  const base = Math.max(st.received, it.minThreshold, 1);
+  const outPct = (st.released / base) * 100;
+  const remPct = (st.remaining / base) * 100;
+  const minPct = Math.min(100, (it.minThreshold / base) * 100);
+  const gap = st.remaining - it.minThreshold;
 
   return (
     <>
@@ -104,55 +197,61 @@ export function ItemPage() {
         <Crumbs items={[{ label: L('المخزون', 'Inventory'), to: '/inventory' }, { label: whName(it.warehouseId), to: `/inventory?wh=${it.warehouseId}` }, { label: it.name }]} />
       </div>
 
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <h1 className="h1">{it.name}</h1>
-          {it.status === 'archived' ? <span className="chip plain">{L('مؤرشف', 'Archived')}</span> : <StockChip level={lvl} />}
-        </div>
-        <p className="muted mono" style={{ margin: '4px 0 0', fontSize: 13 }}>{[it.sapCode || it.itemCode, whName(it.warehouseId)].filter(Boolean).join(' · ')}</p>
-      </div>
-
-      <div className="toolbar no-print">
-        {canStock && <>
-          <button className="btn sm primary" disabled={it.quantity <= 0} onClick={() => setAction('withdraw')}><Icon name="down" size={16} />{L('صرف كمية', 'Withdraw')}</button>
-          <button className="btn sm" onClick={() => setAction('add')}><Icon name="up" size={16} />{L('إضافة كمية', 'Add stock')}</button>
-          <button className="btn sm" onClick={() => setAction('return')}><Icon name="restore" size={16} />{L('إرجاع للمخزون', 'Return')}</button>
-        </>}
-        {canCart && (
-          <button className={`btn sm ${inCart ? 'selected' : ''}`} onClick={() => { const r = inCart ? (cart.remove(it.id), 'removed') : cart.add(it); if (r === 'mixed') toast(L('سند الصرف يقبل مكان تخزين واحد فقط', 'One storage per release'), 'error'); }}>
-            <Icon name={inCart ? 'check' : 'bag'} size={16} />{inCart ? L('في سند الصرف', 'In release') : L('إضافة لسند الصرف', 'Add to release')}
-          </button>
-        )}
+      <div className="item-head">
+        <h1 className="h1">{it.name}</h1>
+        {it.status === 'archived' ? <span className="chip plain">{L('مؤرشف', 'Archived')}</span> : <StockChip level={lvl} />}
         <span className="grow" />
-        {can(s.role, 'item:edit') && <button className="btn sm" onClick={() => setEdit(true)}><Icon name="edit" size={16} />{L('تعديل البيانات', 'Edit details')}</button>}
-        {can(s.role, 'item:archive') && (it.status === 'active'
-          ? <button className="btn sm" onClick={() => setConfirm('archive')}><Icon name="archive" size={16} />{L('أرشفة', 'Archive')}</button>
-          : <button className="btn sm" onClick={async () => { await setItemStatus(it.id, 'active', it.name); toast(L('تمت الاستعادة', 'Restored')); refresh(); }}><Icon name="restore" size={16} />{L('استعادة', 'Restore')}</button>)}
-        {can(s.role, 'item:delete') && <button className="btn sm danger" onClick={() => setConfirm('delete')}><Icon name="trash" size={16} />{L('حذف', 'Delete')}</button>}
+        {!edit && <div className="item-actions no-print">
+          {it.status === 'active' && can(s.role, 'item:edit') && <button className="btn sm" onClick={() => setReceive(true)}><Icon name="up" size={15} />{L('استلام كمية', 'Receive stock')}</button>}
+          {can(s.role, 'item:edit') && <button className="btn sm" onClick={() => setEdit(true)}><Icon name="edit" size={15} />{L('تعديل التفاصيل', 'Edit details')}</button>}
+          <MoreMenu it={it}
+            onArchive={() => setConfirm('archive')}
+            onRestore={async () => { await setItemStatus(it.id, 'active', it.name); toast(L('تمت الاستعادة', 'Restored')); refresh(); }}
+            onDelete={() => setConfirm('delete')} />
+        </div>}
       </div>
 
-      <div className="card qty-strip">
-        <div><span className="muted">{L('الكمية الحالية', 'Current quantity')}</span><b className="mono" style={{ color: lvl === 'ok' ? 'var(--text)' : `var(--${lvl})` }}>{it.quantity} <small>{it.unit}</small></b></div>
-        <div><span className="muted">{L('الحد الأدنى', 'Minimum')}</span><b className="mono">{it.minThreshold}</b></div>
-        <div className="grow" style={{ minWidth: 160 }}><span className="muted">{L('المستوى', 'Level')}</span><div className="bar" style={{ height: 8, marginTop: 10 }}><i style={{ width: `${it.quantity <= 0 ? 0 : Math.max(6, pct)}%`, background: `var(--${lvl})` }} /></div></div>
-      </div>
+      <section className="card stock-panel">
+        <div className="stat4">
+          <div><span>{L('المستلم الكلي', 'Total received')}</span><b className="mono">{st.received}</b><small>{it.unit}</small></div>
+          <div><span>{L('المصروف', 'Released')}</span><b className="mono c-out">{st.released}</b><small>{st.releases ? L(`في ${st.releases} سندات`, `in ${st.releases} releases`) : '—'}{st.returned ? L(` · أُرجع ${st.returned}`, ` · ${st.returned} returned`) : ''}</small></div>
+          <div><span>{L('المتبقي', 'Remaining')}</span><b className={`mono ${lvl === 'ok' ? 'c-rem' : `c-${lvl}`}`}>{st.remaining}</b><small>{L('في المخزن', 'on the shelf')}</small></div>
+          <div><span>{L('الحد الأدنى', 'Minimum')}</span><b className="mono c-min">{it.minThreshold}</b><small>{L('تنبيه تحته', 'alert below')}</small></div>
+        </div>
+        <div className="stockbar" role="img" aria-label={L(`مصروف ${st.released}، متبقي ${st.remaining}، الحد الأدنى ${it.minThreshold}`, `Released ${st.released}, remaining ${st.remaining}, minimum ${it.minThreshold}`)}>
+          <div className="track">
+            <i className={`seg-rem ${lvl}`} style={{ width: `${remPct}%` }} />
+            <i className="seg-out" style={{ width: `${outPct}%` }} />
+          </div>
+          <div className="ticks" aria-hidden="true">{Array.from({ length: 11 }, (_, i) => <i key={i} className={i % 5 === 0 ? 'major' : ''} />)}</div>
+          {it.minThreshold > 0 && <span className="min-mark" style={{ insetInlineStart: `${minPct}%` }}><em>{L('الحد', 'Min')} {it.minThreshold}</em></span>}
+        </div>
+        <div className="stock-legend">
+          <span><i className="lg rem" />{L('متبقي', 'Remaining')} {st.remaining}</span>
+          <span><i className="lg out" />{L('مصروف', 'Released')} {st.released}</span>
+          <span><i className="lg min" />{L('الحد الأدنى', 'Minimum')} {it.minThreshold}</span>
+          <span className="grow" />
+          <span className={gap > 0 ? 'muted' : `c-${lvl}`}>{gap > 0 ? L(`أعلى من الحد بـ ${gap}`, `${gap} above minimum`) : gap === 0 ? L('عند الحد الأدنى', 'At minimum') : L(`أقل من الحد بـ ${-gap}`, `${-gap} below minimum`)}</span>
+        </div>
+      </section>
 
       <div className="split">
-        <section className="card card-pad">
-          <h2 className="section-title" style={{ marginBottom: 8 }}>{L('بيانات الصنف', 'Item details')}</h2>
-          <dl className="dl">
-            {info.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
-            {it.notes && <div style={{ gridColumn: '1 / -1' }}><dt>{L('ملاحظات', 'Notes')}</dt><dd>{it.notes}</dd></div>}
-          </dl>
-        </section>
-        <section className="card card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {edit ? <DetailsEdit it={it} onCancel={() => setEdit(false)} onSaved={() => { setEdit(false); refresh(); }} /> : (
+          <section className="card card-pad">
+            <h2 className="section-title" style={{ marginBottom: 8 }}>{L('بيانات الصنف', 'Item details')}</h2>
+            <dl className="dl">
+              {info.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+              {it.notes && <div style={{ gridColumn: '1 / -1' }}><dt>{L('ملاحظات', 'Notes')}</dt><dd>{it.notes}</dd></div>}
+            </dl>
+          </section>
+        )}
+        <section className="card mv-card">
           <h2 className="section-title">{L('سجل الحركة', 'Movement history')}</h2>
-          {(moves.data ?? []).length === 0 ? <p className="muted" style={{ margin: 0 }}>{moves.loading ? L('جارٍ التحميل…', 'Loading…') : L('لا توجد حركات', 'No movements')}</p> : (moves.data ?? []).map((m) => <MovementRow key={m.id} m={m} />)}
+          {(moves.data ?? []).length === 0 ? <p className="muted" style={{ margin: 0, padding: '4px 14px 12px', fontSize: 13 }}>{moves.loading ? L('جارٍ التحميل…', 'Loading…') : L('لا توجد حركات', 'No movements')}</p> : (moves.data ?? []).map((m) => <MovementRow key={m.id} m={m} />)}
         </section>
       </div>
 
-      {action && <StockSheet item={it} kind={action} onClose={() => setAction(null)} onDone={() => { setAction(null); refresh(); }} />}
-      {edit && <ItemForm item={it} onClose={() => setEdit(false)} onSaved={() => { setEdit(false); refresh(); }} />}
+      {receive && <ReceiveSheet item={it} onClose={() => setReceive(false)} onDone={() => { setReceive(false); refresh(); }} />}
       {confirm === 'archive' && <Confirm title={L('أرشفة الصنف؟', 'Archive item?')} text={L('سيختفي من المخزون النشط ويمكن استعادته لاحقاً.', 'It will be hidden from active stock and can be restored later.')} confirmLabel={L('أرشفة', 'Archive')} onClose={() => setConfirm(null)} onConfirm={async () => { await setItemStatus(it.id, 'archived', it.name); cart.remove(it.id); toast(L('تمت الأرشفة', 'Archived')); refresh(); }} />}
       {confirm === 'delete' && <Confirm danger title={L('حذف نهائي؟', 'Delete permanently?')} text={L('سيُحذف الصنف نهائياً ولا يمكن التراجع. سجل الحركات يبقى محفوظاً.', 'The item will be deleted for good. Movement history is kept.')} confirmLabel={L('حذف', 'Delete')} onClose={() => setConfirm(null)} onConfirm={async () => { await deleteItem(it.id, it.name); cart.remove(it.id); toast(L('تم الحذف', 'Deleted')); reload(); nav('/inventory'); }} />}
     </>

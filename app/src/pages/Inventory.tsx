@@ -7,7 +7,7 @@ import { fetchItems, stockLevel } from '../services/inventory';
 import type { Item } from '../services/types';
 import { useCart, useData, useSession } from '../state/app';
 import { Icon } from '../ui/Icon';
-import { Empty, StockBar, StockChip, useToast } from '../ui/kit';
+import { Empty, Sheet, StockBar, StockChip, Stepper, useToast } from '../ui/kit';
 import { ItemForm } from './ItemForm';
 
 type Filter = 'all' | 'low' | 'out' | 'archived';
@@ -31,11 +31,13 @@ function ItemRow({ item, whName }: { item: Item; whName: string }) {
 
 function ItemsTable({ items, whName }: { items: Item[]; whName: (id: string) => string }) {
   const { L } = usePrefs();
+  const s = useSession();
+  const canCart = can(s.role, 'release:create');
   const nav = useNavigate();
   return (
     <div className="list scroll-x">
       <table className="tbl tbl-hover">
-        <thead><tr><th>{L('الصنف', 'Item')}</th><th>{L('المكان', 'Storage')}</th><th>SAP</th><th>{L('المشروع', 'Project')}</th><th style={{ textAlign: 'end' }}>{L('الكمية', 'Qty')}</th><th style={{ textAlign: 'end' }}>{L('الحد', 'Min')}</th><th>{L('الحالة', 'Status')}</th></tr></thead>
+        <thead><tr><th>{L('الصنف', 'Item')}</th><th>{L('المكان', 'Storage')}</th><th>SAP</th><th>{L('المشروع', 'Project')}</th><th style={{ textAlign: 'end' }}>{L('الكمية', 'Qty')}</th><th style={{ textAlign: 'end' }}>{L('الحد', 'Min')}</th><th>{L('الحالة', 'Status')}</th>{canCart && <th aria-label={L('السلة', 'Cart')} />}</tr></thead>
         <tbody>
           {items.map((i) => {
             const lvl = stockLevel(i);
@@ -45,6 +47,7 @@ function ItemsTable({ items, whName }: { items: Item[]; whName: (id: string) => 
                 <td className="mono" style={{ textAlign: 'end', fontWeight: 600, color: lvl === 'ok' ? undefined : `var(--${lvl})` }}>{i.quantity} <span className="muted" style={{ fontWeight: 400 }}>{i.unit}</span></td>
                 <td className="mono muted" style={{ textAlign: 'end' }}>{i.minThreshold}</td>
                 <td>{i.status === 'archived' ? <span className="chip plain">{L('مؤرشف', 'Archived')}</span> : <StockChip level={lvl} />}</td>
+                {canCart && <td style={{ width: 52, textAlign: 'end' }}><AddToCart item={i} /></td>}
               </tr>
             );
           })}
@@ -79,23 +82,43 @@ function ItemsView({ view, items, whName, groups }: { view: View; items: Item[];
   );
 }
 
+/** "+" next to an item: pick a quantity, then it goes into the cart. */
 export function AddToCart({ item }: { item: Item }) {
   const { L } = usePrefs();
   const cart = useCart();
   const toast = useToast();
-  const inCart = cart.has(item.id);
+  const entry = cart.entries.find((e) => e.itemId === item.id);
+  const [open, setOpen] = useState(false);
+  const [qty, setQty] = useState(entry?.qty ?? 1);
   if (item.quantity <= 0 || item.status !== 'active') return null;
+  const stop = (e: React.SyntheticEvent) => { e.preventDefault(); e.stopPropagation(); };
   return (
-    <button type="button" className="icon-btn" aria-label={inCart ? L('إزالة من السند', 'Remove from release') : L('إضافة لسند الصرف', 'Add to release')}
-      style={inCart ? { background: 'var(--primary)', color: 'var(--on-primary)', borderColor: 'var(--primary)' } : { color: 'var(--accent-text)', background: 'var(--raised)' }}
-      onClick={(e) => {
-        e.preventDefault(); e.stopPropagation();
-        if (inCart) { cart.remove(item.id); return; }
-        const r = cart.add(item);
-        if (r === 'mixed') toast(L('سند الصرف يقبل أصنافاً من مكان تخزين واحد فقط', 'A release can hold items from one storage only'), 'error');
-      }}>
-      <Icon name={inCart ? 'check' : 'plus'} size={18} stroke={2.3} />
-    </button>
+    <>
+      <button type="button" className={`cart-add ${entry ? 'in' : ''}`} aria-label={entry ? L(`في السلة: ${entry.qty}`, `In cart: ${entry.qty}`) : L('أضف للسلة', 'Add to cart')}
+        onClick={(e) => { stop(e); setQty(entry?.qty ?? 1); setOpen(true); }}>
+        {entry ? <><Icon name="check" size={14} stroke={2.6} /><span className="mono">{entry.qty}</span></> : <Icon name="plus" size={17} stroke={2.3} />}
+      </button>
+      {open && (
+        <div onClick={stop} style={{ display: 'contents' }}>
+          <Sheet title={item.name} onClose={() => setOpen(false)}>
+            <div className="qty-pick">
+              <p className="muted">{L('المتوفر', 'Available')} <b className="mono" style={{ color: 'var(--text)' }}>{item.quantity}</b> {item.unit}</p>
+              <Stepper value={qty} max={item.quantity} onChange={setQty} />
+              <button className="btn primary block" onClick={() => {
+                if (entry) cart.setQty(item.id, qty);
+                else {
+                  const r = cart.add(item, qty);
+                  if (r === 'mixed') { toast(L('السلة تقبل أصنافاً من مكان تخزين واحد فقط', 'The cart holds items from one storage only'), 'error'); return; }
+                }
+                toast(L(`في السلة: ${item.name} × ${qty}`, `In cart: ${item.name} × ${qty}`));
+                setOpen(false);
+              }}>{entry ? L('تحديث الكمية', 'Update quantity') : L(`أضف ${qty} للسلة`, `Add ${qty} to cart`)}</button>
+              {entry && <button className="btn ghost block" onClick={() => { cart.remove(item.id); setOpen(false); }}>{L('إزالة من السلة', 'Remove from cart')}</button>}
+            </div>
+          </Sheet>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -166,6 +189,7 @@ export function Inventory() {
     <>
       <div className="head">
         <div><h1 className="h1">{L('المخزون', 'Inventory')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{wh ? <>{L('أنت في', 'You are in')} <b style={{ color: 'var(--text)' }}>{whName(wh)}</b> · </> : null}{L(`${list.length} من ${items.length} صنف`, `${list.length} of ${items.length} items`)}</p></div>
+        {can(s.role, 'item:create') && warehouses.length > 0 && <button className="btn sm" onClick={() => setShowNew(true)}><Icon name="plus" size={16} />{L('صنف جديد', 'New item')}</button>}
       </div>
 
       <div className="inv-tools">

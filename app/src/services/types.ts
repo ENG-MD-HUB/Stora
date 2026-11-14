@@ -85,6 +85,9 @@ export interface Movement {
   reason?: string;
   destination?: string;
   notes?: string;
+  /** Set when the movement belongs to a release (issue, return or cancellation). */
+  releaseId?: string;
+  releaseNumber?: string;
   createdAt?: TS;
 }
 
@@ -97,6 +100,8 @@ export interface ReleaseLine {
   qtyReleased: number;
   qtyRemaining: number;
   description: string;
+  /** Pieces brought back to stock from this line. */
+  qtyReturned?: number;
 }
 
 export interface Release {

@@ -69,11 +69,11 @@ export async function fetchItem(id: string): Promise<Item | null> {
 export async function fetchMovements(itemId: string, companyId: string): Promise<Movement[]> {
   // companyId must be in the query: security rules only allow reading a company's own movements.
   try {
-    const snap = await getDocs(query(collection(db, COL.movements), where('companyId', '==', companyId), where('itemId', '==', itemId), orderBy('createdAt', 'desc'), limit(60)));
+    const snap = await getDocs(query(collection(db, COL.movements), where('companyId', '==', companyId), where('itemId', '==', itemId), orderBy('createdAt', 'desc'), limit(500)));
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Movement);
   } catch {
     const snap = await getDocs(query(collection(db, COL.movements), where('companyId', '==', companyId), where('itemId', '==', itemId)));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Movement).sort(byNewest).slice(0, 60);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Movement).sort(byNewest).slice(0, 500);
   }
 }
 
@@ -140,7 +140,7 @@ export async function updateItem(id: string, input: Partial<ItemInput>) {
   await audit('ITEM_EDIT', 'item', id, { newValue: { name: data.name ?? cur.name } });
 }
 
-export interface StockChange { itemId: string; quantity: number; requesterName?: string; reason?: string; destination?: string; notes?: string }
+export interface StockChange { itemId: string; quantity: number; requesterName?: string; reason?: string; destination?: string; notes?: string; releaseId?: string; releaseNumber?: string }
 
 /** Withdraw (negative) or add / return (positive) stock with a movement record. */
 export async function changeStock(kind: 'withdraw' | 'add' | 'return', c: StockChange) {
@@ -157,10 +157,12 @@ export async function changeStock(kind: 'withdraw' | 'add' | 'return', c: StockC
   b.set(doc(collection(db, COL.movements)), {
     companyId: s.companyId, itemId: c.itemId, warehouseId: it.warehouseId, type: kind, quantityBefore: it.quantity, quantityAfter: after,
     requesterName: c.requesterName ?? '', reason: c.reason ?? '', destination: c.destination ?? '', approvedBy: '',
-    performedBy: s.uid, performedByName: s.displayName, notes: c.notes ?? '', createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    performedBy: s.uid, performedByName: s.displayName, notes: c.notes ?? '',
+    ...(c.releaseId ? { releaseId: c.releaseId, releaseNumber: c.releaseNumber ?? '' } : {}),
+    createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
   await b.commit();
-  await audit(kind === 'withdraw' ? 'ITEM_WITHDRAW' : kind === 'return' ? 'ITEM_RETURN' : 'QTY_CHANGE', 'item', c.itemId, { previousValue: { quantity: it.quantity }, newValue: { name: it.name, quantity: after } });
+  await audit(kind === 'withdraw' ? 'ITEM_WITHDRAW' : kind === 'return' ? 'ITEM_RETURN' : 'QTY_CHANGE', 'item', c.itemId, { previousValue: { quantity: it.quantity }, newValue: { name: it.name, quantity: after, ...(c.releaseNumber ? { releaseNumber: c.releaseNumber } : {}) } });
   if (kind === 'withdraw' && after <= it.minThreshold) notifyLowStock(s.companyId, c.itemId, it.name, after);
   return after;
 }
