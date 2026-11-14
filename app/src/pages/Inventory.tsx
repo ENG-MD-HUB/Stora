@@ -8,7 +8,6 @@ import type { Item } from '../services/types';
 import { useCart, useData, useSession } from '../state/app';
 import { Icon } from '../ui/Icon';
 import { Empty, StockBar, StockChip, useToast } from '../ui/kit';
-import { ImportSheet } from './ImportSheet';
 import { ItemForm } from './ItemForm';
 
 type Filter = 'all' | 'low' | 'out' | 'archived';
@@ -136,11 +135,10 @@ export function Inventory() {
   const [view, setViewState] = useState<View>(() => { try { return (localStorage.getItem('stora.view') as View) || 'cards'; } catch { return 'cards'; } });
   const setView = (v: View) => { setViewState(v); try { localStorage.setItem('stora.view', v); } catch { /* ignore */ } };
   const [sort, setSort] = useState<Sort>('new');
-  const [showImport, setShowImport] = useState(params.get('import') === '1');
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (params.get('focus') === '1') searchRef.current?.focus(); }, [params]);
-  useEffect(() => { if (params.get('new') === '1') setShowNew(true); if (params.get('import') === '1') setShowImport(true); setWh(params.get('wh') ?? ''); }, [params]);
+  useEffect(() => { if (params.get('new') === '1') setShowNew(true); setWh(params.get('wh') ?? ''); }, [params]);
   useEffect(() => {
     if (filter !== 'archived' || archived) return;
     fetchItems(s.companyId, 'archived').then((a) => setArchived(s.assignedWarehouseIds.length && s.role !== 'manager' ? a.filter((i) => s.assignedWarehouseIds.includes(i.warehouseId)) : a)).catch(() => setArchived([]));
@@ -167,54 +165,38 @@ export function Inventory() {
   return (
     <>
       <div className="head">
-        <div><h1 className="h1">{L('المخزون', 'Inventory')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{L(`${items.length} صنف في ${warehouses.length} أماكن تخزين`, `${items.length} items in ${warehouses.length} storages`)}</p></div>
-        {can(s.role, 'item:create') && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn" onClick={() => setShowImport(true)}><Icon name="up" size={18} /><span className="desktop-only">{L('استيراد Excel', 'Import Excel')}</span></button>
-            <button className="btn primary sm mobile-only" style={{ width: 48, height: 48, padding: 0 }} onClick={() => setShowNew(true)} aria-label={L('إضافة صنف', 'Add item')}><Icon name="plus" stroke={2.3} /></button>
-          </div>
-        )}
+        <div><h1 className="h1">{L('المخزون', 'Inventory')}</h1><p className="muted" style={{ margin: 0, fontSize: 13 }}>{wh ? <>{L('أنت في', 'You are in')} <b style={{ color: 'var(--text)' }}>{whName(wh)}</b> · </> : null}{L(`${list.length} من ${items.length} صنف`, `${list.length} of ${items.length} items`)}</p></div>
       </div>
 
-      {wh && (
-        <div className="callout" style={{ alignItems: 'center', padding: '10px 14px' }}>
-          <Icon name="storage" size={20} />
-          <span className="grow">{L('أنت في', 'You are in')} <b>{whName(wh)}</b> · <span className="muted">{L(`${items.filter((i) => i.warehouseId === wh).length} صنف`, `${items.filter((i) => i.warehouseId === wh).length} items`)}</span></span>
-          <button className="btn sm ghost" onClick={() => { setWh(''); setParams({}, { replace: true }); }}>{L('كل الأماكن', 'All storages')} ✕</button>
-        </div>
-      )}
-      <label className="search">
-        <Icon name="search" size={18} />
-        <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('ابحث بالاسم أو الرمز أو SAP', 'Search name, code or SAP')} aria-label={L('بحث', 'Search')} />
-        {hasFeature('barcodeScanner') && <button type="button" onClick={() => go('/scan?mode=search')} style={{ background: 'none', border: 0, color: 'var(--accent-text)', display: 'grid' }} aria-label={L('مسح باركود', 'Scan')}><Icon name="scan" /></button>}
-      </label>
-
-      <div className="filters">
-        {([['all', L('الكل', 'All')], ['low', `${L('منخفض', 'Low')} · ${counts.low}`], ['out', `${L('نفد', 'Out')} · ${counts.out}`], ['archived', L('مؤرشف', 'Archived')]] as [Filter, string][]).map(([k, label]) => (
-          <button key={k} className={`fchip ${filter === k ? 'on' : ''}`} onClick={() => { setFilter(k); setParams({}, { replace: true }); }}>{label}</button>
-        ))}
+      <div className="inv-tools">
+        <label className="search sm">
+          <Icon name="search" size={17} />
+          <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('ابحث بالاسم أو الرمز أو SAP', 'Search name, code or SAP')} aria-label={L('بحث', 'Search')} />
+          {hasFeature('barcodeScanner') && <button type="button" onClick={() => go('/scan?mode=search')} className="search-scan" title={L('مسح باركود', 'Scan barcode')} aria-label={L('مسح باركود', 'Scan barcode')}><Icon name="scan" size={18} /></button>}
+        </label>
         {warehouses.length > 1 && (
-          <select className="fchip" value={wh} onChange={(e) => setWh(e.target.value)} aria-label={L('مكان التخزين', 'Storage')}>
-            <option value="">{L('كل الأماكن', 'All storages')}</option>
+          <select className="ctl" value={wh} onChange={(e) => { setWh(e.target.value); setParams(e.target.value ? { wh: e.target.value } : {}, { replace: true }); }} aria-label={L('مكان التخزين', 'Storage')}>
+            <option value="">{L('كل أماكن التخزين', 'All storages')}</option>
             {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
         )}
-      </div>
-
-      <div className="view-bar">
-        <span className="muted" style={{ fontSize: 13 }}>{L(`${list.length} صنف`, `${list.length} items`)}</span>
-        <span className="grow" />
-        <select className="fchip" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label={L('الترتيب', 'Sort')}>
-          <option value="new">{L('الأحدث', 'Newest')}</option>
-          <option value="name">{L('الاسم', 'Name')}</option>
-          <option value="qtyAsc">{L('الأقل كمية', 'Lowest qty')}</option>
-          <option value="qtyDesc">{L('الأعلى كمية', 'Highest qty')}</option>
+        <select className="ctl" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label={L('الترتيب', 'Sort')}>
+          <option value="new">{L('ترتيب: الأحدث', 'Sort: Newest')}</option>
+          <option value="name">{L('ترتيب: الاسم', 'Sort: Name')}</option>
+          <option value="qtyAsc">{L('ترتيب: الأقل كمية', 'Sort: Lowest qty')}</option>
+          <option value="qtyDesc">{L('ترتيب: الأعلى كمية', 'Sort: Highest qty')}</option>
         </select>
         <div className="seg" role="radiogroup" aria-label={L('طريقة العرض', 'View')}>
           {VIEWS.map(([k, icon, label]) => (
-            <button key={k} role="radio" aria-checked={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)} title={L(label[0], label[1])} aria-label={L(label[0], label[1])}><Icon name={icon} size={17} /></button>
+            <button key={k} role="radio" aria-checked={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)} title={L(label[0], label[1])} aria-label={L(label[0], label[1])}><Icon name={icon} size={16} /></button>
           ))}
         </div>
+      </div>
+
+      <div className="filters">
+        {([['all', L('الكل', 'All'), null], ['low', L('منخفض', 'Low'), counts.low], ['out', L('نفد', 'Out of stock'), counts.out], ['archived', L('مؤرشف', 'Archived'), null]] as [Filter, string, number | null][]).map(([k, label, n]) => (
+          <button key={k} className={`fchip ${filter === k ? 'on' : ''}`} onClick={() => setFilter(k)}>{label}{n !== null && <span className="fchip-n">{n}</span>}</button>
+        ))}
       </div>
 
       {loading && !items.length ? (
@@ -228,7 +210,6 @@ export function Inventory() {
       )}
       {list.length > 300 && <p className="muted" style={{ textAlign: 'center', fontSize: 13 }}>{L('استخدم البحث لعرض باقي الأصناف', 'Use search to see the rest')}</p>}
 
-      {showImport && <ImportSheet onClose={() => setShowImport(false)} />}
       {showNew && <ItemForm defaultWarehouse={wh || undefined} onClose={() => { setShowNew(false); setParams({}, { replace: true }); }} onSaved={(id) => { setShowNew(false); reload(); go(`/item/${id}`); }} />}
     </>
   );

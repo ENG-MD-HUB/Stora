@@ -10,6 +10,7 @@ import { useAuth, useSession } from '../state/app';
 import { PoweredBy } from '../ui/Brand';
 import { Icon } from '../ui/Icon';
 import { useToast } from '../ui/kit';
+import { ImportSheet } from './ImportSheet';
 
 /** One settings row: label on one side, value/control on the other. */
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
@@ -42,6 +43,8 @@ export default function Settings() {
   const [name, setName] = useState(s.displayName);
   const [sig, setSig] = useState<Signatory[] | null>(null);
   const [savingSig, setSavingSig] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const canImport = can(s.role, 'item:create') && s.companyId !== 'system';
   const canSig = can(s.role, 'settings:company') && s.companyId !== 'system';
   const dev = deviceInfo();
 
@@ -117,6 +120,18 @@ export default function Settings() {
         </section>
       )}
 
+      {canImport && (
+        <section className="card set-list">
+          <h2 className="section-title">{L('البيانات', 'Data')}</h2>
+          <Row label={L('استيراد مواد من Excel', 'Import materials from Excel')} hint={L('لنقل مخزون قديم أو إضافة أصناف كثيرة مرة واحدة', 'Move an old stock list or add many items at once')}>
+            <button className="btn sm" onClick={() => setImporting(true)}><Icon name="up" size={16} />{L('استيراد', 'Import')}</button>
+          </Row>
+          <Row label={L('قالب الاستيراد', 'Import template')} hint={L('ملف Excel جاهز بالأعمدة المطلوبة', 'Ready Excel file with the required columns')}>
+            <a className="btn sm" href={`${import.meta.env.BASE_URL}templates/STORA-import-template.xlsx`} download><Icon name="download" size={16} />{L('تحميل', 'Download')}</a>
+          </Row>
+        </section>
+      )}
+
       {/* About */}
       <section className="card set-list">
         <h2 className="section-title">{L('حول التطبيق', 'About')}</h2>
@@ -126,6 +141,7 @@ export default function Settings() {
         <Row label={L('معرّف التثبيت', 'Install ID')} hint={L('رقم عشوائي لهذا الجهاز فقط', 'Random, this device only')}><span className="mono ltr">{installId().slice(0, 8)}</span></Row>
       </section>
 
+      {importing && <ImportSheet onClose={() => setImporting(false)} />}
       <button className="btn danger block" onClick={signOut}><Icon name="logout" size={18} />{L('تسجيل الخروج', 'Sign out')}</button>
       <div style={{ display: 'flex', justifyContent: 'center' }}><PoweredBy height={12} /></div>
     </div>
