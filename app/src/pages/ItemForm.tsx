@@ -15,7 +15,7 @@ export function ItemForm({ item, defaultWarehouse, onClose, onSaved }: { item?: 
   const exp = toDate(item?.expiryDate);
   const [f, setF] = useState<Record<string, string>>(() => ({
     warehouseId: item?.warehouseId ?? defaultWarehouse ?? (warehouses.length === 1 ? warehouses[0].id : ''),
-    name: item?.name ?? '', itemCode: item?.itemCode ?? '', projectName: item?.projectName ?? '', owner: item?.owner ?? '',
+    name: item?.name ?? '', itemCode: item?.itemCode ?? '', shelf: item?.shelf ?? '', projectName: item?.projectName ?? '', owner: item?.owner ?? '',
     quantity: String(item?.quantity ?? ''), unit: item?.unit ?? 'pcs', minThreshold: String(item?.minThreshold ?? 5), notes: item?.notes ?? '',
     expiryDate: exp ? exp.toISOString().slice(0, 10) : '',
     ...Object.fromEntries(EXTRA.map((k) => [k, (item?.[k] as string) ?? ''])),
@@ -77,6 +77,7 @@ export function ItemForm({ item, defaultWarehouse, onClose, onSaved }: { item?: 
       </div>
       <div className="grid g2">
         {inp('itemCode', L('رقم المخزون', 'Stock no.'), { mono: true })}
+        {inp('shelf', L('الرف', 'Shelf'), { mono: true })}
         {inp('expiryDate', L('تاريخ الانتهاء', 'Expiry'), { type: 'date', hint: L('اختياري', 'optional') })}
       </div>
       <Field label={L('ملاحظات', 'Notes')} hint={L('اختياري', 'optional')}><textarea className="input" rows={2} value={f.notes} onChange={set('notes')} /></Field>

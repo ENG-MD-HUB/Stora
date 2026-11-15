@@ -96,7 +96,7 @@ export async function fetchMovementsSince(companyId: string, days: number): Prom
 
 export type ItemInput = Omit<Item, 'id' | 'companyId' | 'status' | 'internalId' | 'createdAt' | 'updatedAt' | 'entryDate' | 'expiryDate'> & { expiryDate?: string };
 
-const OPTIONAL = ['itemCode', 'notes', 'employeeNumber', 'modelCategory', 'model', 'serialNumber', 'assetsTag', 'sapCode', 'requestType', 'poNumber', 'dnNumber'] as const;
+const OPTIONAL = ['itemCode', 'shelf', 'notes', 'employeeNumber', 'modelCategory', 'model', 'serialNumber', 'assetsTag', 'sapCode', 'requestType', 'poNumber', 'dnNumber'] as const;
 
 function clean(input: Partial<ItemInput>) {
   const out: Record<string, unknown> = {};
@@ -202,5 +202,5 @@ export const stockLevel = (it: Pick<Item, 'quantity' | 'minThreshold'>): StockLe
 export function findByCode(items: Item[], code: string): Item | undefined {
   const c = code.trim().toLowerCase();
   if (!c) return undefined;
-  return items.find((i) => [i.sapCode, i.itemCode, i.serialNumber, i.assetsTag, i.internalId].some((v) => v && v.trim().toLowerCase() === c));
+  return items.find((i) => [i.sapCode, i.itemCode, i.shelf, i.serialNumber, i.assetsTag, i.internalId].some((v) => v && v.trim().toLowerCase() === c));
 }

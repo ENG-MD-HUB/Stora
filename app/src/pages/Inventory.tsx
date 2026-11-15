@@ -21,7 +21,7 @@ function ItemRow({ item, whName }: { item: Item; whName: string }) {
   return (
     <Link to={`/item/${item.id}`} className="row">
       <span className={`dotlvl ${lvl}`} aria-hidden="true" />
-      <span className="grow"><p className="title" style={{ fontSize: 14.5 }}>{item.name}</p><p className="sub mono" style={{ fontSize: 12 }}>{[item.sapCode || item.itemCode, whName].filter(Boolean).join(' · ')}</p></span>
+      <span className="grow"><p className="title" style={{ fontSize: 14.5 }}>{item.name}</p><p className="sub mono" style={{ fontSize: 12 }}>{[item.sapCode || item.itemCode, item.shelf, whName].filter(Boolean).join(' · ')}</p></span>
       <b className="mono" style={{ color: lvl === 'ok' ? 'var(--text)' : `var(--${lvl})` }}>{item.quantity}</b>
       <span className="muted" style={{ fontSize: 12, minWidth: 34 }}>{item.unit}</span>
       {can(s.role, 'release:create') && item.status === 'active' && <AddToCart item={item} />}
@@ -140,7 +140,7 @@ export function ItemCard({ item, whName }: { item: Item; whName: string }) {
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <div className="grow">
           <p className="title">{item.name}</p>
-          <p className="sub mono" style={{ fontSize: 12 }}>{[item.sapCode || item.itemCode, whName].filter(Boolean).join(' · ')}</p>
+          <p className="sub mono" style={{ fontSize: 12 }}>{[item.sapCode || item.itemCode, item.shelf, whName].filter(Boolean).join(' · ')}</p>
         </div>
         {item.status === 'archived' ? <span className="chip plain">{L('مؤرشف', 'Archived')}</span> : lvl === 'out' ? <StockChip level="out" /> : can(s.role, 'release:create') && <AddToCart item={item} />}
       </div>
@@ -184,7 +184,7 @@ export function Inventory() {
     return src.filter((i) =>
       (filter === 'all' || filter === 'archived' || stockLevel(i) === filter) &&
       (!wh || i.warehouseId === wh) &&
-      (!t || [i.name, i.itemCode, i.sapCode, i.serialNumber, i.assetsTag, i.projectName, i.model, i.internalId].some((v) => v?.toLowerCase().includes(t))));
+      (!t || [i.name, i.itemCode, i.shelf, i.sapCode, i.serialNumber, i.assetsTag, i.projectName, i.model, i.internalId].some((v) => v?.toLowerCase().includes(t))));
   }, [items, archived, filter, wh, q]);
 
   const sorted = useMemo(() => {
