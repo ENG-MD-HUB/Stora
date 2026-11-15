@@ -77,7 +77,7 @@ function stats(it: Item, moves: Movement[]) {
 
 const EXTRA: [keyof Item, string, string, boolean?][] = [
   ['projectName', 'المشروع', 'Project'], ['owner', 'مالك الأصول', 'Assets owner'], ['unit', 'الوحدة', 'Unit'], ['minThreshold', 'الحد الأدنى', 'Minimum'],
-  ['itemCode', 'رقم المخزون', 'Stock no.', true], ['sapCode', 'SAP', 'SAP', true], ['model', 'الموديل', 'Model'], ['serialNumber', 'الرقم التسلسلي', 'Serial', true],
+  ['shelf', 'الرف', 'Shelf', true], ['itemCode', 'رقم المخزون', 'Stock no.', true], ['sapCode', 'SAP', 'SAP', true], ['model', 'الموديل', 'Model'], ['serialNumber', 'الرقم التسلسلي', 'Serial', true],
   ['assetsTag', 'رقم الأصل', 'Asset tag', true], ['poNumber', 'أمر الشراء', 'PO', true], ['dnNumber', 'سند التسليم', 'DN', true], ['modelCategory', 'فئة الموديل', 'Model category'],
   ['employeeNumber', 'الشركة', 'Company'], ['requestType', 'نوع الطلب', 'Request type'],
 ];
@@ -177,7 +177,7 @@ export function ItemPage() {
   const lvl = stockLevel(it);
   const refresh = () => { item.reload(); moves.reload(); reload(); };
   const info = [
-    [L('مكان التخزين', 'Storage'), whName(it.warehouseId)], [L('المشروع', 'Project'), it.projectName], [L('مالك الأصول', 'Assets owner'), it.owner],
+    [L('مكان التخزين', 'Storage'), whName(it.warehouseId)], [L('الرف', 'Shelf'), it.shelf ?? ''], [L('المشروع', 'Project'), it.projectName], [L('مالك الأصول', 'Assets owner'), it.owner],
     [L('رقم المخزون', 'Stock no.'), it.itemCode], ['SAP', it.sapCode], [L('الموديل', 'Model'), it.model], [L('الرقم التسلسلي', 'Serial'), it.serialNumber],
     [L('رقم الأصل', 'Asset tag'), it.assetsTag], [L('أمر الشراء', 'PO'), it.poNumber], [L('سند التسليم', 'DN'), it.dnNumber],
     [L('تاريخ الإدخال', 'Entry date'), fmtDate(it.entryDate ?? it.createdAt, lang)], [L('تاريخ الانتهاء', 'Expiry'), it.expiryDate ? fmtDate(it.expiryDate, lang) : ''],

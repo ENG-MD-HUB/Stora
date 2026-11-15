@@ -45,6 +45,8 @@ export interface Item {
   warehouseId: string;
   internalId?: string;
   itemCode?: string;
+  /** Shelf / bin location inside the storage, e.g. DC2-infra2-R02-S03. */
+  shelf?: string;
   name: string;
   projectName: string;
   quantity: number;

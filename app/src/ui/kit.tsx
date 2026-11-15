@@ -100,12 +100,18 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
   );
 }
 
+/** Quantity input with − / + buttons. Typed values may have decimals (lengths in ft or m). */
 export function Stepper({ value, min = 1, max, onChange }: { value: number; min?: number; max: number; onChange: (n: number) => void }) {
+  const [txt, setTxt] = useState(String(value));
+  useEffect(() => { setTxt(String(value)); }, [value]);
+  const clamp = (n: number) => Math.min(max, Math.max(0.001, Math.round(n * 1000) / 1000));
   return (
     <div className="stepper">
-      <button type="button" aria-label="-" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>−</button>
-      <input className="mono" inputMode="numeric" aria-label="qty" value={value} onFocus={(e) => e.target.select()} onChange={(e) => { const n = parseInt(e.target.value.replace(/\D/g, ''), 10); onChange(Math.min(max, Math.max(min, Number.isFinite(n) ? n : min))); }} />
-      <button type="button" aria-label="+" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>+</button>
+      <button type="button" aria-label="-" onClick={() => onChange(Math.max(min, Math.round((value - 1) * 1000) / 1000))} disabled={value - 1 < min}>−</button>
+      <input className="mono" inputMode="decimal" aria-label="qty" value={txt} onFocus={(e) => e.target.select()}
+        onChange={(e) => { const raw = e.target.value.replace(/[^\d.]/g, ''); setTxt(raw); const n = parseFloat(raw); if (Number.isFinite(n) && n > 0) onChange(clamp(n)); }}
+        onBlur={() => setTxt(String(value))} />
+      <button type="button" aria-label="+" onClick={() => onChange(Math.min(max, Math.round((value + 1) * 1000) / 1000))} disabled={value + 1 > max}>+</button>
     </div>
   );
 }

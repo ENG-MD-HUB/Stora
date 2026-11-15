@@ -14,6 +14,8 @@ const ITEM_FIELDS = [
   ['projectName', 'project', 'المشروع', true],
   ['owner', 'assets owner', 'مالك الأصول', true],
   ['itemCode', 'stock number', 'رقم المخزون', false],
+  ['shelf', 'shelf', 'الرف', false],
+  ['released', 'released quantity', 'الكمية المصروفة', false],
   ['sapCode', 'sap code', 'رمز sap', false],
   ['model', 'model', 'الموديل', false],
   ['modelCategory', 'model category', 'فئة الموديل', false],
@@ -29,7 +31,7 @@ const ITEM_FIELDS = [
 const WH_FIELDS = [['code', 'code', 'الرمز'], ['name', 'name', 'الاسم'], ['location', 'location', 'الموقع'], ['department', 'department', 'القسم'], ['storageType', 'storage type', 'نوع التخزين']] as const;
 
 type Cell = string | number | boolean | Date | null;
-export interface ImportRow { line: number; data: Record<string, string>; quantity: number; minThreshold: number; expiry?: Date; errors: string[]; action?: 'create' | 'update'; matchId?: string }
+export interface ImportRow { line: number; data: Record<string, string>; quantity: number; released: number; minThreshold: number; expiry?: Date; errors: string[]; action?: 'create' | 'update'; matchId?: string }
 export interface ImportPlan { rows: ImportRow[]; newStorages: { code: string; name: string; location: string; department: string; storageType: string }[] }
 
 const norm = (v: Cell) => (v instanceof Date ? v.toISOString().slice(0, 10) : v == null ? '' : String(v).trim());
@@ -83,6 +85,8 @@ export function planImport(raw: { items: Record<string, Cell>[]; storages: Recor
     const quantity = Number(data.quantity);
     if (data.quantity && (!Number.isFinite(quantity) || quantity < 0)) errors.push(L('الكمية غير صحيحة', 'Invalid quantity'));
     const minThreshold = data.minThreshold ? Number(data.minThreshold) : 0;
+    const released = data.released ? Number(data.released) : 0;
+    if (data.released && (!Number.isFinite(released) || released < 0)) errors.push(L('الكمية المصروفة غير صحيحة', 'Invalid released quantity'));
     if (data.storageCode && !known.has(data.storageCode) && !newStorages.some((n) => n.code === data.storageCode)) {
       newStorages.push({ code: data.storageCode, name: data.storageCode, location: '—', department: '—', storageType: '—' });
     }
@@ -90,12 +94,12 @@ export function planImport(raw: { items: Record<string, Cell>[]; storages: Recor
     if (data.expiryDate) { const d = new Date(data.expiryDate); if (isNaN(d.getTime())) errors.push(L('تاريخ الانتهاء غير صحيح', 'Invalid expiry date')); else expiry = d; }
     const wh = known.get(data.storageCode);
     const match = wh && items.find((i) => i.warehouseId === wh.id && ((data.sapCode && i.sapCode === data.sapCode) || (data.itemCode && i.itemCode === data.itemCode)));
-    return { line: Number(r.__line), data, quantity: Math.floor(quantity || 0), minThreshold: Math.max(0, Math.floor(minThreshold || 0)), expiry, errors, action: match ? 'update' : 'create', matchId: match?.id };
+    return { line: Number(r.__line), data, quantity: Math.round((quantity || 0) * 1000) / 1000, released: Math.round((released || 0) * 1000) / 1000, minThreshold: Math.max(0, Math.floor(minThreshold || 0)), expiry, errors, action: match ? 'update' : 'create', matchId: match?.id };
   });
   return { rows, newStorages };
 }
 
-const OPTIONAL = ['itemCode', 'sapCode', 'model', 'modelCategory', 'serialNumber', 'assetsTag', 'employeeNumber', 'poNumber', 'dnNumber', 'requestType', 'notes'] as const;
+const OPTIONAL = ['itemCode', 'shelf', 'sapCode', 'model', 'modelCategory', 'serialNumber', 'assetsTag', 'employeeNumber', 'poNumber', 'dnNumber', 'requestType', 'notes'] as const;
 
 export async function runImport(plan: ImportPlan, warehouses: Warehouse[], items: Item[], onProgress: (done: number, total: number) => void) {
   const s = requireSession();
@@ -106,9 +110,9 @@ export async function runImport(plan: ImportPlan, warehouses: Warehouse[], items
   }
   const good = plan.rows.filter((r) => !r.errors.length);
   let created = 0, updated = 0;
-  for (let i = 0; i < good.length; i += 150) {
+  for (let i = 0; i < good.length; i += 120) {
     const b = writeBatch(db);
-    for (const r of good.slice(i, i + 150)) {
+    for (const r of good.slice(i, i + 120)) {
       const whId = codeToId.get(r.data.storageCode)!;
       const fields: Record<string, unknown> = { name: r.data.name, unit: r.data.unit, projectName: r.data.projectName, owner: r.data.owner, minThreshold: r.minThreshold, updatedAt: serverTimestamp() };
       OPTIONAL.forEach((k) => { if (r.data[k]) fields[k] = r.data[k]; });
@@ -122,12 +126,15 @@ export async function runImport(plan: ImportPlan, warehouses: Warehouse[], items
       } else {
         const ref = doc(collection(db, COL.items));
         b.set(ref, { ...fields, companyId: s.companyId, warehouseId: whId, quantity: r.quantity, internalId: `ITM-${crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`, status: 'active', addedBy: s.uid, entryDate: serverTimestamp(), createdAt: serverTimestamp() });
-        b.set(doc(collection(db, COL.movements)), { ...mv, itemId: ref.id, type: 'add', quantityBefore: 0, quantityAfter: r.quantity, notes: 'Excel import' });
+        // Opening balance: what was received, then what had already been released before STORA.
+        const received = r.quantity + r.released;
+        b.set(doc(collection(db, COL.movements)), { ...mv, itemId: ref.id, type: 'add', quantityBefore: 0, quantityAfter: received, reason: r.data.dnNumber || r.data.poNumber || '', notes: 'Opening balance — Excel import' });
+        if (r.released > 0) b.set(doc(collection(db, COL.movements)), { ...mv, itemId: ref.id, type: 'withdraw', quantityBefore: received, quantityAfter: r.quantity, reason: 'Released before STORA', notes: 'Opening balance — Excel import' });
         created++;
       }
     }
     await b.commit();
-    onProgress(Math.min(i + 150, good.length), good.length);
+    onProgress(Math.min(i + 120, good.length), good.length);
   }
   await audit('EXCEL_IMPORT', 'item', null, { newValue: { created, updated, storages: plan.newStorages.length } });
   return { created, updated, storages: plan.newStorages.length };
