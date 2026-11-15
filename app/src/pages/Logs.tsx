@@ -5,7 +5,7 @@ import { fetchLogs } from '../services/audit';
 import { useData, useSession } from '../state/app';
 import { Empty, Loading, useLoad } from '../ui/kit';
 
-const LABELS: Record<string, [string, string]> = {
+export const LABELS: Record<string, [string, string]> = {
   LOGIN: ['تسجيل دخول', 'Signed in'], LOGOUT: ['تسجيل خروج', 'Signed out'], SESSION_TIMEOUT: ['انتهاء الجلسة', 'Session expired'],
   ITEM_CREATE: ['إضافة صنف', 'Item added'], ITEM_EDIT: ['تعديل صنف', 'Item edited'], ITEM_WITHDRAW: ['صرف صنف', 'Item withdrawn'], ITEM_RETURN: ['إرجاع صنف', 'Item returned'],
   ITEM_ARCHIVE: ['أرشفة صنف', 'Item archived'], DATA_RESET: ['حذف بيانات', 'Data deleted'], ITEM_DELETE: ['حذف صنف', 'Item deleted'], ITEM_RESTORE: ['استعادة صنف', 'Item restored'], QTY_CHANGE: ['تغيير كمية', 'Quantity changed'],

@@ -6,12 +6,13 @@ import { deviceInfo, installId } from '../lib/telemetry';
 import { updateMyName } from '../services/auth';
 import { fetchSignatories, saveSignatories } from '../services/releases';
 import type { Signatory } from '../services/types';
-import { useAuth, useSession } from '../state/app';
+import { useAuth, useData, useSession } from '../state/app';
 import { PoweredBy } from '../ui/Brand';
 import { Icon } from '../ui/Icon';
 import { useToast } from '../ui/kit';
 import { ImportSheet } from './ImportSheet';
 import { ResetSheet } from './ResetSheet';
+import { downloadBackup } from '../services/backup';
 
 /** One settings row: label on one side, value/control on the other. */
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
@@ -46,6 +47,8 @@ export default function Settings() {
   const [savingSig, setSavingSig] = useState(false);
   const [importing, setImporting] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [backing, setBacking] = useState('');
+  const { warehouses, items } = useData();
   const canReset = s.role === 'manager' && s.companyId !== 'system';
   const canImport = can(s.role, 'item:create') && s.companyId !== 'system';
   const canSig = can(s.role, 'settings:company') && s.companyId !== 'system';
@@ -132,6 +135,16 @@ export default function Settings() {
           <Row label={L('قالب الاستيراد', 'Import template')} hint={L('ملف Excel جاهز بالأعمدة المطلوبة', 'Ready Excel file with the required columns')}>
             <a className="btn sm" href={`${import.meta.env.BASE_URL}templates/STORA-import-template.xlsx`} download><Icon name="download" size={16} />{L('تحميل', 'Download')}</a>
           </Row>
+          {canReset && (
+            <Row label={L('نسخة احتياطية كاملة', 'Full backup')} hint={L('ملف Excel واحد: الأصناف، الأماكن، الحركات، السندات، السجل، الفريق', 'One Excel file: items, storages, movements, releases, log, team')}>
+              <button className="btn sm" disabled={!!backing} onClick={async () => {
+                setBacking(L('جارٍ التجهيز…', 'Preparing…'));
+                try { await downloadBackup({ companyId: s.companyId, company: company ?? '', by: s.displayName, warehouses, items, L, lang, onStep: setBacking }); toast(L('تم تنزيل النسخة', 'Backup downloaded')); }
+                catch { toast(L('تعذّر إنشاء النسخة', 'Could not create the backup'), 'error'); }
+                finally { setBacking(''); }
+              }}>{backing ? <><span className="spinner" />{backing}</> : <><Icon name="download" size={16} />{L('تنزيل', 'Download')}</>}</button>
+            </Row>
+          )}
           {canReset && (
             <Row label={L('حذف البيانات', 'Delete data')} hint={L('مسح بيانات التجربة: الحركات، السندات، السجل، الأصناف…', 'Clear test data: movements, releases, log, items…')}>
               <button className="btn sm danger" onClick={() => setResetting(true)}><Icon name="trash" size={16} />{L('حذف…', 'Delete…')}</button>
