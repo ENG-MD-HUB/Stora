@@ -207,8 +207,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
   .print-only { display: block !important; }
   .card, .list { break-inside: avoid; }
   .no-print, .tabbar, .sidebar, .topbar, .cartbar, .toasts, .offline { display: none !important; }
-  .page { padding: 0; max-width: none; }
+  .page { padding: 12mm 12mm 10mm; max-width: none; }
 }
+/* margin 0 removes the URL/title/date the browser prints around the page */
+@page { size: A4; margin: 0; }
 
 /* ---------- Intro / auth screens ---------- */
 .auth { min-height: 100vh; display: flex; flex-direction: column; align-items: center; position: relative; overflow: hidden; padding: 0 18px; }
