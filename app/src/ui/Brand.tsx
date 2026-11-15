@@ -51,7 +51,7 @@ export function PrintFooter() {
   return (
     <div dir="ltr" style={{ marginTop: 18, paddingTop: 6, borderTop: '1px solid #999', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: '#555' }}>
       <span>STORA {APP.version} · {new Date().toLocaleString('en-GB')}</span>
-      <PoweredBy height={14} print />
+      <PoweredBy height={9} print />
     </div>
   );
 }
