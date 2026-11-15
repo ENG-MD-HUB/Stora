@@ -69,7 +69,8 @@ export async function readWorkbook(file: File): Promise<{ items: Record<string, 
 
 export function planImport(raw: { items: Record<string, Cell>[]; storages: Record<string, Cell>[] }, warehouses: Warehouse[], items: Item[], ar: boolean): ImportPlan {
   const L = (a: string, e: string) => (ar ? a : e);
-  const known = new Map(warehouses.map((w) => [w.code.toUpperCase(), w]));
+  // A storage is matched by its code or by its name.
+  const known = new Map<string, Warehouse>([...warehouses.map((w) => [w.name.trim().toUpperCase(), w] as const), ...warehouses.map((w) => [w.code.trim().toUpperCase(), w] as const)]);
   const newStorages: ImportPlan['newStorages'] = [];
   raw.storages.forEach((s) => {
     const code = norm(s.code).toUpperCase();
@@ -103,7 +104,7 @@ const OPTIONAL = ['itemCode', 'shelf', 'sapCode', 'model', 'modelCategory', 'ser
 
 export async function runImport(plan: ImportPlan, warehouses: Warehouse[], items: Item[], onProgress: (done: number, total: number) => void) {
   const s = requireSession();
-  const codeToId = new Map(warehouses.map((w) => [w.code.toUpperCase(), w.id]));
+  const codeToId = new Map<string, string>([...warehouses.map((w) => [w.name.trim().toUpperCase(), w.id] as const), ...warehouses.map((w) => [w.code.trim().toUpperCase(), w.id] as const)]);
   for (const w of plan.newStorages) {
     const ref = await addDoc(collection(db, COL.warehouses), { ...w, notes: 'Created by Excel import', companyId: s.companyId, status: 'active', createdBy: s.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     codeToId.set(w.code, ref.id);
