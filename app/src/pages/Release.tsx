@@ -7,6 +7,7 @@ import { cancelRelease, createRelease, fetchRelease, fetchReleases, fetchSignato
 import type { ReleaseLine } from '../services/types';
 import { useAuth, useCart, useData, useSession } from '../state/app';
 import { PrintFooter, PrintHeader } from '../ui/Brand';
+import { useBranding } from '../services/branding';
 import { Icon } from '../ui/Icon';
 import { Confirm, Empty, Field, Loading, Sheet, Stepper, useLoad, useToast } from '../ui/kit';
 
@@ -139,6 +140,7 @@ export function Releases() {
 export function ReleaseView() {
   const { id = '' } = useParams();
   const s = useSession();
+  const brand = useBranding(s.companyId);
   const { company } = useAuth();
   const { L, lang } = usePrefs();
   const { reload } = useData();
@@ -222,7 +224,7 @@ export function ReleaseView() {
 
       {cancel && <Confirm danger title={L('إلغاء السند؟', 'Cancel release?')} text={L('ستعود الكميات إلى المخزون ويُسجّل الإلغاء.', 'Quantities go back to stock and the cancellation is logged.')} confirmLabel={L('إلغاء السند', 'Cancel release')} onClose={() => setCancel(false)} onConfirm={async () => { await cancelRelease(rel.id); toast(L('تم إلغاء السند', 'Release cancelled')); r.reload(); reload(); }} />}
       {ret && <ReturnSheet releaseId={rel.id} releaseNumber={rel.releaseNumber} line={ret} onClose={() => setRet(null)} onDone={() => { setRet(null); r.reload(); reload(); }} />}
-      <AutoPrint ready={!!sig.data} />
+      <AutoPrint ready={!!sig.data && brand.loaded} />
     </>
   );
 }

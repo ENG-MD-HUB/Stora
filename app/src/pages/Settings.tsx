@@ -12,6 +12,7 @@ import { Icon } from '../ui/Icon';
 import { useToast } from '../ui/kit';
 import { ImportSheet } from './ImportSheet';
 import { ResetSheet } from './ResetSheet';
+import { prepareLogo, saveLogo, useBranding, type LogoSide } from '../services/branding';
 import { downloadBackup } from '../services/backup';
 
 /** One settings row: label on one side, value/control on the other. */
@@ -36,6 +37,34 @@ function Segmented<T extends string>({ value, options, onChange }: { value: T; o
   );
 }
 
+/** One logo slot: preview box with upload / replace / remove. */
+function LogoSlot({ side, label, src }: { side: LogoSide; label: string; src?: string }) {
+  const { L } = usePrefs();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const id = `logo-${side}`;
+  async function pick(f?: File | null) {
+    if (!f) return;
+    setBusy(true);
+    try { await saveLogo(side, await prepareLogo(f)); toast(L('تم حفظ الشعار', 'Logo saved')); }
+    catch (e) { toast((e as Error).message === 'type' ? L('اختر صورة PNG أو JPG أو SVG', 'Choose a PNG, JPG or SVG image') : (e as Error).message === 'size' ? L('الصورة كبيرة جداً', 'The image is too large') : L('تعذّر الحفظ', 'Could not save'), 'error'); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div className="logo-slot">
+      <span className="logo-slot-label">{label}</span>
+      <label htmlFor={id} className={`logo-box ${src ? 'has' : ''}`}>
+        {busy ? <span className="spinner" /> : src ? <img src={src} alt={label} /> : <><Icon name="up" size={18} /><small>{L('رفع شعار', 'Upload logo')}</small></>}
+      </label>
+      <input id={id} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+      {src && <div className="logo-actions">
+        <label htmlFor={id} className="btn sm ghost">{L('تغيير', 'Replace')}</label>
+        <button className="btn sm ghost danger-text" disabled={busy} onClick={async () => { setBusy(true); try { await saveLogo(side, null); toast(L('تمت الإزالة', 'Removed')); } finally { setBusy(false); } }}>{L('إزالة', 'Remove')}</button>
+      </div>}
+    </div>
+  );
+}
+
 export default function Settings() {
   const s = useSession();
   const { company, setSession, signOut } = useAuth();
@@ -53,6 +82,7 @@ export default function Settings() {
   const canImport = can(s.role, 'item:create') && s.companyId !== 'system';
   const canSig = can(s.role, 'settings:company') && s.companyId !== 'system';
   const dev = deviceInfo();
+  const { branding } = useBranding(s.companyId);
 
   useEffect(() => { if (canSig) fetchSignatories(s.companyId).then(setSig); }, [canSig, s.companyId]);
 
@@ -104,6 +134,18 @@ export default function Settings() {
           <Segmented value={lang} onChange={setLang} options={[['en', 'English'], ['ar', 'العربية']]} />
         </Row>
       </section>
+
+      {/* Logos on printed documents */}
+      {canSig && (
+        <section className="card set-list">
+          <div><h2 className="section-title">{L('شعارات المطبوعات', 'Logos on printouts')}</h2><p className="muted" style={{ margin: '2px 0 0', fontSize: 13 }}>{L('تظهر في زاويتي أعلى سند الصرف والتقارير. PNG بخلفية شفافة يعطي أفضل شكل.', 'Shown in the top corners of release forms and reports. A PNG with a transparent background looks best.')}</p></div>
+          <div className="logo-preview" dir="ltr">
+            <LogoSlot side="logoLeft" label={L('الشعار الأيسر', 'Left logo')} src={branding.logoLeft} />
+            <div className="logo-mid"><b>MATERIAL RELEASE FORM</b><small>{company}</small></div>
+            <LogoSlot side="logoRight" label={L('الشعار الأيمن', 'Right logo')} src={branding.logoRight} />
+          </div>
+        </section>
+      )}
 
       {/* Release form signatories */}
       {canSig && sig && (

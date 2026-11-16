@@ -1,4 +1,6 @@
 import { APP } from '../config/app';
+import { useBranding } from '../services/branding';
+import { useSession } from '../state/app';
 import { Logo } from './Icon';
 
 const base = import.meta.env.BASE_URL;
@@ -30,19 +32,35 @@ export function SiteFooter() {
   );
 }
 
-/** Header and footer used on printed documents (release form, reports). */
-export function PrintHeader({ title, company, meta }: { title: string; company: string; meta?: React.ReactNode }) {
+/** Small box mark drawn inline, sized to sit beside text. */
+function BoxMark({ size }: { size: number }) {
   return (
-    <div dir="ltr" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: 8, marginBottom: 10, color: '#000' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <img src={`${base}brand/stora-icon.png`} alt="" style={{ width: 38, height: 38, objectFit: 'contain' }} />
-        <div>
-          <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, letterSpacing: '.25em', fontSize: 15 }}>STORA</div>
-          <div style={{ fontSize: 10, color: '#444' }}>Warehouse Management · {company}</div>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
+      <path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7zM3.5 7 12 11.5 20.5 7M12 11.5v10" />
+    </svg>
+  );
+}
+
+/** Header used on printed documents: company logos in the two top corners, title in the middle. */
+export function PrintHeader({ title, company, meta }: { title: string; company: string; meta?: React.ReactNode }) {
+  const s = useSession();
+  const { branding } = useBranding(s.companyId);
+  const slot = (src?: string, align: 'left' | 'right' = 'left') => (
+    <div style={{ width: '28%', height: 58, display: 'flex', alignItems: 'center', justifyContent: align === 'left' ? 'flex-start' : 'flex-end' }}>
+      {src && <img src={src} alt="" style={{ maxHeight: 58, maxWidth: '100%', objectFit: 'contain' }} />}
+    </div>
+  );
+  return (
+    <div dir="ltr" style={{ borderBottom: '2px solid #000', paddingBottom: 6, marginBottom: 10, color: '#000' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        {slot(branding.logoLeft, 'left')}
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '.02em' }}>{title}</div>
+          <div style={{ fontSize: 10.5, color: '#444', marginTop: 2 }}>{company}</div>
         </div>
+        {slot(branding.logoRight, 'right')}
       </div>
-      <div style={{ textAlign: 'center', fontSize: 17, fontWeight: 700 }}>{title}</div>
-      <div style={{ textAlign: 'right', fontSize: 11 }}>{meta}</div>
+      {meta && <div className="print-meta" style={{ display: 'flex', justifyContent: 'center', gap: 18, flexWrap: 'wrap', fontSize: 10.5, marginTop: 6 }}>{meta}</div>}
     </div>
   );
 }
@@ -50,8 +68,8 @@ export function PrintHeader({ title, company, meta }: { title: string; company: 
 export function PrintFooter() {
   return (
     <div dir="ltr" style={{ marginTop: 18, paddingTop: 6, borderTop: '1px solid #999', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: '#555' }}>
-      <span>STORA {APP.version} · {new Date().toLocaleString('en-GB')}</span>
-      <PoweredBy height={9} print />
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><BoxMark size={10} /><b style={{ letterSpacing: '.12em' }}>STORA</b> {APP.version} · {new Date().toLocaleString('en-GB')}</span>
+      <PoweredBy height={7} print />
     </div>
   );
 }
