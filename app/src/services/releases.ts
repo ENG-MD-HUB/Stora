@@ -102,7 +102,7 @@ export async function fetchSignatories(companyId: string): Promise<Signatory[]> 
 }
 
 export async function saveSignatories(companyId: string, signatories: Signatory[]) {
-  await setDoc(doc(db, COL.settings, `${companyId}_release`), { signatories, updatedAt: serverTimestamp() });
+  await setDoc(doc(db, COL.settings, `${companyId}_release`), { signatories, updatedAt: serverTimestamp() }, { merge: true });
 }
 
 /** Brings pieces of one release line back to stock, linked to the release number. */
