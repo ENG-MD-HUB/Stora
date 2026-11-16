@@ -488,17 +488,18 @@ a.fab-wrap { text-decoration: none; }
 .callout.danger-box b { color: var(--out); }
 
 /* ---------- Print logos (Settings) ---------- */
-.logo-preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px; border-radius: 12px; background: #fff; color: #111; border-bottom: 3px solid #111; }
+.logo-preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .logo-slot { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
-.logo-slot-label { font-size: 11.5px; color: #666; }
-.logo-box { height: 74px; border: 1.5px dashed #b9c2cf; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #4a5a70; cursor: pointer; background: #f6f8fb; overflow: hidden; }
-.logo-box small { font-size: 11.5px; font-weight: 600; }
-.logo-box.has { border-style: solid; border-color: #e3e7ee; background: #fff; padding: 6px; }
+.logo-slot-label { font-size: 12px; color: var(--muted); }
+.logo-box { height: 76px; border: 1.5px dashed var(--line); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); cursor: pointer; background: var(--raised); overflow: hidden; transition: border-color .15s, color .15s; }
+.logo-box small { font-size: 12px; font-weight: 600; }
+.logo-box:hover { border-color: var(--primary); color: var(--accent-text); }
+/* an uploaded logo sits on white, the way it will look on paper */
+.logo-box.has { border: 1px solid var(--line); background: #fff; padding: 8px; }
 .logo-box img { max-height: 100%; max-width: 100%; object-fit: contain; }
-.logo-box:hover { border-color: var(--primary); }
 .logo-actions { display: flex; gap: 6px; justify-content: center; }
-.logo-actions .btn { color: #333; height: 28px; font-size: 12px; }
-.logo-actions .danger-text { color: #b42318; }
-.logo-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 74px; margin-top: 20px; }
-.logo-mid b { font-size: 13px; letter-spacing: .02em; } .logo-mid small { font-size: 11px; color: #666; }
+.logo-actions .btn { height: 28px; font-size: 12px; }
+.logo-actions .danger-text { color: var(--out); }
+.logo-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; height: 76px; margin-top: 20px; color: var(--muted); }
+.logo-mid b { font-size: 12.5px; letter-spacing: .03em; color: var(--text); } .logo-mid small { font-size: 11.5px; }
 @media (max-width: 560px) { .logo-preview { grid-template-columns: 1fr 1fr; } .logo-mid { display: none; } }

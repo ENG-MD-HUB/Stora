@@ -2,7 +2,7 @@
 export const APP = {
   id: 'stora',
   name: 'STORA',
-  version: '3.0.7',
+  version: '3.0.8',
   build: '2026-11',
   developer: 'Mohammad M. Alamoudi',
   superAdminEmail: 'md.aisystems@gmail.com',
